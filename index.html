@@ -50,10 +50,31 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
   <div id="mform">
     <div class="row"><div><label>Date</label><input id="m_date" type="date"></div>
       <div><label>Measured by</label><input id="m_by" placeholder="Quantity Surveyor"></div></div>
+    <label>Road</label><select id="m_road"></select>
+    <div class="seg" id="m_mode" style="margin-top:12px"><button data-v="act" class="on">Work done</button><button data-v="pt">Culverts</button><button data-v="other">Other items</button></div>
+    <!-- Option 1: work done, measured by the Estimator engines in the office -->
+    <div id="w_act">
+      <label>Activity</label><select id="a_act"></select>
+      <div id="a_hint" class="muted"></div>
+      <div class="row"><div><label>From (m)</label><input id="a_from" type="number" inputmode="decimal" step="any"></div>
+        <div><label>To (m)</label><input id="a_to" type="number" inputmode="decimal" step="any"></div></div>
+      <div class="card"><div class="muted">Paid for this activity after this record (whole 50 m stations, rounded down)</div>
+        <div class="qty" id="a_paid">—</div><div class="muted" id="a_calc"></div></div>
+      <div class="muted">Widths, thicknesses, drain types and haul distances come from the design. The office's Estimator engines work out every item (materials, concrete, haulage) from what you record.</div>
+    </div>
+    <div id="w_pt" style="display:none">
+      <label>Culvert or structure (from the design)</label><select id="p_pt"></select>
+      <div id="p_hint" class="muted"></div>
+      <label>State</label><div class="seg" id="p_state"><button data-v="complete" class="on">Completed</button><button data-v="progress">In progress</button></div>
+      <div id="p_c"><label>As-built length (m)</label><input id="p_len" type="number" inputmode="decimal" step="any">
+        <div class="muted">Paid up to the design length. A longer culvert is paid at the design length unless the Engineer approved the excess (variation order).</div></div>
+      <div id="p_p" style="display:none"><label>Percentage constructed</label><input id="p_pct" type="number" inputmode="decimal" step="any" placeholder="e.g. 40">
+        <div class="muted">For the progress report only. A culvert is paid on completion.</div></div>
+    </div>
+    <div id="w_other" style="display:none">
     <label>BOQ item</label><input id="m_search" placeholder="Search item code or description" autocomplete="off">
     <select id="m_item" style="margin-top:6px"></select>
     <div id="m_dims" class="muted"></div>
-    <label>Road</label><select id="m_road"></select>
     <div id="lin">
       <div class="row"><div><label>From (m)</label><input id="m_from" type="number" inputmode="decimal" step="any"></div>
         <div><label>To (m)</label><input id="m_to" type="number" inputmode="decimal" step="any"></div></div>
@@ -67,10 +88,11 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
     <label><input type="checkbox" id="m_ovr" style="width:auto"> The work differs from the dimensions: enter the quantity</label>
     <div id="ovr" style="display:none"><div class="row"><div><label>Quantity</label><input id="m_oq" type="number" inputmode="decimal" step="any"></div>
       <div><label>Reason</label><input id="m_or" placeholder="e.g. wider at junction"></div></div></div>
+    </div>
     <label>Notes</label><textarea id="m_note" rows="2"></textarea>
     <label>Photos</label><input id="m_photo" type="file" accept="image/*" capture="environment" multiple>
     <div class="thumbs" id="m_thumbs"></div>
-    <div class="row" style="margin-top:12px"><button class="btn sec" id="m_gps">Stamp GPS</button><button class="btn" id="m_save">Save measurement</button></div>
+    <div class="row" style="margin-top:12px"><button class="btn sec" id="m_gps">Stamp GPS</button><button class="btn" id="m_save">Save</button></div>
     <div id="m_gpsv" class="muted"></div>
     <div id="m_msg"></div>
   </div>
@@ -142,7 +164,7 @@ const fmt = (v, d = 2) => (v == null || isNaN(v) ? "—" : Number(v).toLocaleStr
 const ch = (m) => { m = Math.round(m || 0); return `${Math.floor(m / 1000)}+${String(m % 1000).padStart(3, "0")}`; };
 const today = () => new Date().toISOString().slice(0, 10);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-let PK = null, DIMS = {}, RECS = [], side = "B/S", pending = [], gps = null;
+let PK = null, DIMS = {}, RECS = [], side = "B/S", pending = [], gps = null, MODE = "act", PSTATE = "complete";
 
 /* ---------- how an item is measured ---------- */
 function unitKind(u) {
@@ -219,6 +241,116 @@ function checks(rec, it) {
   return {errs, warns};
 }
 
+/* ---------- Option 1: work done, measured by the Estimator engines ---------- */
+const ST = 50;
+const O1 = () => (PK && PK.option1) || null;
+const o1road = (name) => (O1() ? O1().roads.find((r) => r.name === name) : null);
+const actLabel = (k) => { for (const r of (O1() || {roads: []}).roads) { const a = r.activities.find((x) => x.key === k); if (a) return a.label; } return k; };
+const kindOf = (r) => r.kind || "other";
+function paidSpans(list, end) {             // join, then cut inward to whole 50 m stations (rounded down)
+  const iv = list.filter((r) => r.to > r.from).map((r) => [+r.from, +r.to]).sort((a, b) => a[0] - b[0]);
+  const m = [];
+  for (const [a, b] of iv) { if (m.length && a <= m[m.length - 1][1]) m[m.length - 1][1] = Math.max(m[m.length - 1][1], b); else m.push([a, b]); }
+  const out = [];
+  for (let [a, b] of m) {
+    b = Math.min(b, end);
+    const f = Math.ceil(a / ST) * ST; let l = Math.floor(b / ST) * ST;
+    if (b >= end && end % ST) l = Math.floor(end / ST) * ST + ST;
+    if (l > f) out.push([f, Math.min(l, end)]);
+  }
+  return out;
+}
+const spanLen = (sp) => sp.reduce((t, [a, b]) => t + b - a, 0);
+const spanTxt = (sp) => sp.length ? sp.map(([a, b]) => `${ch(a)}–${ch(b)}`).join(", ") : "nothing yet";
+function covers(sp, a, b) { let x = a; for (const [p, q] of sp) { if (p > x) break; x = Math.max(x, q); if (x >= b) return true; } return x >= b; }
+function actRecs(road, act, exceptId) { return RECS.filter((r) => kindOf(r) === "act" && r.road === road && r.act === act && r.id !== exceptId); }
+function fillActs() {
+  const rd = o1road($("#m_road").value); const cur = $("#a_act").value;
+  $("#a_act").innerHTML = rd ? rd.activities.map((a) => `<option value="${a.key}">${esc(a.label)}</option>`).join("") : "";
+  if (rd && rd.activities.some((a) => a.key === cur)) $("#a_act").value = cur;
+  const pc = $("#p_pt").value;
+  $("#p_pt").innerHTML = rd && rd.points.length ? rd.points.map((p) => {
+    const st = ptState(rd.name, p.id);
+    return `<option value="${esc(p.id)}">${ch(p.ch)} · ${esc(p.family || "")} ${esc(p.cells || "")}/${esc(p.size || "")} · ${p.len || "?"} m${st.done ? " · COMPLETED" : st.pct ? ` · ${st.pct} %` : ""}</option>`; }).join("")
+    : `<option value="">No culverts or structures in the design</option>`;
+  if (rd && rd.points.some((p) => p.id === pc)) $("#p_pt").value = pc;
+  onAct(); onPt();
+}
+function onAct() {
+  const rd = o1road($("#m_road").value), k = $("#a_act").value; if (!rd || !k) return;
+  const a = rd.activities.find((x) => x.key === k);
+  const sp = paidSpans(actRecs(rd.name, k), rd.end);
+  $("#a_hint").innerHTML = `Design: ${spanTxt(a.spans)} (${fmt(spanLen(a.spans), 0)} m)<br>Paid so far: ${spanTxt(sp)} (${fmt(spanLen(sp), 0)} m)`;
+  recalcAct();
+}
+function recalcAct() {
+  const rd = o1road($("#m_road").value), k = $("#a_act").value; if (!rd || !k) return;
+  const a = +$("#a_from").value, b = +$("#a_to").value;
+  const before = paidSpans(actRecs(rd.name, k), rd.end);
+  if (!($("#a_to").value !== "" && b > a)) { $("#a_paid").textContent = "—"; $("#a_calc").textContent = ""; return; }
+  const after = paidSpans(actRecs(rd.name, k).concat([{from: a, to: b}]), rd.end);
+  const add = spanLen(after) - spanLen(before);
+  $("#a_paid").textContent = `${fmt(spanLen(after), 0)} m`;
+  $("#a_calc").textContent = `this record adds ${fmt(add, 0)} m` + (add < b - a ? ` — ${fmt(b - a - add, 0)} m waits until its 50 m station is complete` : "");
+}
+function ptState(road, id) {
+  const l = RECS.filter((r) => kindOf(r) === "point" && r.road === road && r.point === id);
+  const done = l.find((r) => r.state === "complete");
+  return {done, pct: done ? 100 : Math.max(0, ...l.map((r) => +r.pct || 0))};
+}
+function onPt() {
+  const rd = o1road($("#m_road").value); const p = rd && rd.points.find((x) => x.id === $("#p_pt").value);
+  $("#p_hint").textContent = p ? `Design: ${p.family || ""} ${p.cells || ""} cell(s) ${p.size || ""}, ${p.len || "?"} m long, at ${ch(p.ch)}` : "";
+  if (p && $("#p_len").value === "") $("#p_len").placeholder = `design ${p.len} m`;
+  $("#p_c").style.display = PSTATE === "complete" ? "" : "none"; $("#p_p").style.display = PSTATE === "progress" ? "" : "none";
+}
+function setMode(m) {
+  MODE = O1() ? m : "other";
+  $("#m_mode").style.display = O1() ? "" : "none";
+  $("#m_mode").querySelectorAll("button").forEach((b) => { b.classList.toggle("on", b.dataset.v === MODE);
+    if (b.dataset.v === "other") b.style.display = PK && PK.items.length ? "" : "none"; });
+  $("#w_act").style.display = MODE === "act" ? "" : "none"; $("#w_pt").style.display = MODE === "pt" ? "" : "none";
+  $("#w_other").style.display = MODE === "other" ? "" : "none";
+}
+$("#m_mode").querySelectorAll("button").forEach((b) => (b.onclick = () => setMode(b.dataset.v)));
+$("#p_state").querySelectorAll("button").forEach((b) => (b.onclick = () => {
+  PSTATE = b.dataset.v; $("#p_state").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); onPt(); }));
+$("#a_act").onchange = onAct; $("#p_pt").onchange = onPt;
+["a_from", "a_to"].forEach((k) => ($("#" + k).oninput = recalcAct));
+function checkAct(rec) {
+  const errs = [], warns = [], rd = o1road(rec.road);
+  if (!rd) { errs.push("Choose the road."); return {errs, warns}; }
+  if (!(rec.to > rec.from)) errs.push("'To' must be greater than 'From'.");
+  if (rec.from < 0 || rec.to > rd.end + 1) errs.push(`${rec.road} runs from 0 to ${ch(rd.end)}; this record is outside it.`);
+  const clash = actRecs(rec.road, rec.act).find((r) => r.from < rec.to - 0.5 && rec.from < r.to - 0.5);
+  if (clash) errs.push(`Already recorded: ${ch(clash.from)} to ${ch(clash.to)} on ${clash.date}. A stretch cannot be recorded twice.`);
+  const a = rd.activities.find((x) => x.key === rec.act);
+  const inside = a.spans.reduce((t, [p, q]) => t + Math.max(0, Math.min(q, rec.to) - Math.max(p, rec.from)), 0);
+  if (inside <= 0) errs.push("The design has no such work here. Additional work is paid only under an approved variation BOQ.");
+  else if (inside < rec.to - rec.from - 0.5) warns.push(`Only ${fmt(inside, 0)} m of this record is in the design; the rest is not paid unless covered by an approved variation BOQ.`);
+  const need = (O1().needs || {})[rec.act];
+  if (need && rd.activities.some((x) => x.key === need) && !errs.length) {
+    const mine = paidSpans([rec], rd.end), below = paidSpans(actRecs(rec.road, need), rd.end);
+    const gap = mine.find(([p, q]) => !covers(below, p, q));
+    if (gap) errs.push(`The ${actLabel(need).toLowerCase()} is not yet recorded over ${ch(gap[0])} to ${ch(gap[1])}; a layer cannot be recorded ahead of the layer below it.`);
+  }
+  if (!errs.length && !paidSpans([rec], rd.end).length) warns.push("This record does not complete a whole 50 m station yet; it is paid when the station is complete.");
+  return {errs, warns};
+}
+function checkPt(rec) {
+  const errs = [], warns = [], rd = o1road(rec.road), p = rd && rd.points.find((x) => x.id === rec.point);
+  if (!p) { errs.push("Choose the culvert or structure."); return {errs, warns}; }
+  const st = ptState(rec.road, rec.point);
+  if (st.done) errs.push(`This culvert was recorded completed on ${st.done.date}.`);
+  if (rec.state === "complete") {
+    if (rec.len != null && !(rec.len > 0)) errs.push("Enter the as-built length.");
+    if (rec.len != null && p.len && rec.len > +p.len + 0.01) warns.push(`Built ${fmt(rec.len, 2)} m against a design of ${p.len} m: the design length is paid. The excess needs the Engineer's approval and a variation order.`);
+    if (rec.len != null && p.len && rec.len < +p.len - 0.01) warns.push(`Built ${fmt(rec.len, 2)} m, shorter than the design ${p.len} m: the constructed length is paid.`);
+  } else if (!(rec.pct > 0 && rec.pct < 100)) errs.push("Enter the percentage constructed (between 0 and 100).");
+  else if (rec.pct <= st.pct) warns.push(`Earlier record already shows ${st.pct} %.`);
+  return {errs, warns};
+}
+
 /* ---------- views ---------- */
 function item(code) { return PK.items.find((i) => i.code === code) || {code, unit: "", family: ""}; }
 function tab(s) {
@@ -234,11 +366,13 @@ function drawForm() {
   if (!PK) return;
   fillItems("");
   $("#m_road").innerHTML = PK.roads.map((r) => `<option>${esc(r.name)}</option>`).join("");
+  setMode(O1() ? MODE : "other");
   const last = localStorage.getItem("bm_last"); if (last) { try { const l = JSON.parse(last); $("#m_item").value = l.code; $("#m_road").value = l.road; $("#m_from").value = l.to; } catch (e) {} }
   if (!$("#m_date").value) $("#m_date").value = today();
   $("#m_by").value = localStorage.getItem("bm_by") || "";
-  onItem();
+  onItem(); if (O1()) fillActs();
 }
+$("#m_road").onchange = () => { if (O1()) fillActs(); };
 function fillItems(q) {
   q = (q || "").toLowerCase().trim();
   const cur = $("#m_item").value;
@@ -291,11 +425,41 @@ function shrink(file) {
       c.width = img.width * k; c.height = img.height * k; c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", 0.72)); };
       img.src = rd.result; }; rd.readAsDataURL(file); });
 }
+async function saveCommon(rec, chk, done) {
+  if (!rec.by) { msg("#m_msg", "bad", "Enter who measured."); return false; }
+  const {errs, warns} = chk;
+  if (errs.length) { msg("#m_msg", "bad", errs.join("<br>")); return false; }
+  if (warns.length && !confirm(warns.join("\n") + "\n\nSave anyway?")) return false;
+  for (const [k, p] of pending.entries()) { const key = `${rec.id}-${k}`; await DB.putPhoto(key, p); rec.photos.push(key); }
+  await DB.put(rec); RECS.push(rec);
+  localStorage.setItem("bm_by", rec.by);
+  pending = []; gps = null; $("#m_thumbs").innerHTML = ""; $("#m_gpsv").textContent = ""; $("#m_note").value = "";
+  msg("#m_msg", "ok", done + (warns.length ? "<br>" + warns.join("<br>") : ""));
+  return true;
+}
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 $("#m_save").onclick = async () => {
+  const base = {id: newId(), date: $("#m_date").value, by: $("#m_by").value.trim(), road: $("#m_road").value,
+    note: $("#m_note").value.trim(), gps, photos: [], status: "recorded", exported: null, saved: new Date().toISOString()};
+  if (MODE === "act") {
+    const rec = {...base, kind: "act", act: $("#a_act").value, from: +$("#a_from").value, to: +$("#a_to").value};
+    if ($("#a_from").value === "" || $("#a_to").value === "") { msg("#m_msg", "bad", "Enter From and To."); return; }
+    if (await saveCommon(rec, checkAct(rec), `Saved: ${esc(actLabel(rec.act))} ${ch(rec.from)} to ${ch(rec.to)} on ${esc(rec.road)}`)) {
+      $("#a_from").value = rec.to; $("#a_to").value = ""; onAct(); }
+    return;
+  }
+  if (MODE === "pt") {
+    const rec = {...base, kind: "point", point: $("#p_pt").value, state: PSTATE,
+      len: PSTATE === "complete" && $("#p_len").value !== "" ? +$("#p_len").value : null,
+      pct: PSTATE === "progress" ? +$("#p_pct").value : 100};
+    if (await saveCommon(rec, checkPt(rec), `Saved: ${esc(rec.point)} ${rec.state === "complete" ? "completed" : rec.pct + " % constructed"}`)) {
+      $("#p_len").value = ""; $("#p_pct").value = ""; fillActs(); }
+    return;
+  }
   if (!$("#m_item").value) { msg("#m_msg", "bad", "Choose a BOQ item."); return; }
   const it = item($("#m_item").value), pt = isPoint(it), q = recalc();
   const rec = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date: $("#m_date").value, by: $("#m_by").value.trim(),
-    code: it.code, unit: it.unit, road: $("#m_road").value,
+    kind: "other", code: it.code, unit: it.unit, road: $("#m_road").value,
     from: pt ? +$("#m_ch").value : +$("#m_from").value, to: pt ? +$("#m_ch").value : +$("#m_to").value, side: pt ? "" : side,
     count: pt ? +$("#m_count").value : null, qty: q == null ? 0 : Math.round(q * 1000) / 1000,
     calc: $("#m_calc").textContent, override: $("#m_ovr").checked ? {qty: +$("#m_oq").value, reason: $("#m_or").value.trim()} : null,
@@ -318,12 +482,17 @@ function msg(el, kind, html) { $(el).innerHTML = `<div class="msg ${kind}">${htm
 
 function drawRecords() {
   if (!PK) { $("#r_list").innerHTML = '<div class="msg warn">No project loaded.</div>'; return; }
-  const codes = [...new Set(RECS.map((r) => r.code))];
+  const keyOf = (r) => kindOf(r) === "act" ? actLabel(r.act) : kindOf(r) === "point" ? "Culverts and structures" : r.code;
+  const codes = [...new Set(RECS.map(keyOf))];
   const f = $("#r_filter").value, rd = $("#r_road").value;
   $("#r_filter").innerHTML = `<option value="">All items</option>` + codes.map((c) => `<option ${c === f ? "selected" : ""}>${esc(c)}</option>`).join("");
   $("#r_road").innerHTML = `<option value="">All roads</option>` + PK.roads.map((r) => `<option ${r.name === rd ? "selected" : ""}>${esc(r.name)}</option>`).join("");
-  const list = RECS.filter((r) => (!f || r.code === f) && (!rd || r.road === rd)).sort((a, b) => b.date.localeCompare(a.date) || b.saved.localeCompare(a.saved));
-  $("#r_list").innerHTML = list.length ? list.map((r) => `<div class="card"><b>${esc(r.code)}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
+  const list = RECS.filter((r) => (!f || keyOf(r) === f) && (!rd || r.road === rd)).sort((a, b) => b.date.localeCompare(a.date) || b.saved.localeCompare(a.saved));
+  const body = (r) => kindOf(r) === "act" ? `<div>${esc(r.road)} · ${ch(r.from)} to ${ch(r.to)}</div>`
+    : `<div>${esc(r.road)} · ${esc(r.point)} · <b>${r.state === "complete" ? "completed" + (r.len ? ", " + fmt(r.len, 2) + " m built" : "") : r.pct + " % constructed"}</b></div>`;
+  $("#r_list").innerHTML = list.length ? list.map((r) => kindOf(r) !== "other" ? `<div class="card"><b>${esc(keyOf(r))}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
+    ${body(r)}<div class="muted">${r.date} · ${esc(r.by)}${r.note ? " · " + esc(r.note) : ""}${r.photos.length ? " · " + r.photos.length + " photo(s)" : ""}</div>
+    ${r.exported ? "" : `<button class="btn sec" style="margin-top:6px;padding:5px 10px" data-del="${r.id}">Delete</button>`}</div>` : `<div class="card"><b>${esc(r.code)}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
     <div>${esc(r.road)} · ${r.to > r.from ? ch(r.from) + " to " + ch(r.to) + " " + r.side : "at " + ch(r.from)}</div>
     <div><b>${fmt(r.qty)} ${esc(r.unit)}</b> <span class="muted">${esc(r.calc)}${r.override ? " — " + esc(r.override.reason) : ""}</span></div>
     <div class="muted">${r.date} · ${esc(r.by)}${r.note ? " · " + esc(r.note) : ""}${r.photos.length ? " · " + r.photos.length + " photo(s)" : ""}</div>
@@ -342,6 +511,7 @@ function drawItems() {
   if (!PK) { $("#i_list").innerHTML = '<div class="msg warn">No project loaded.</div>'; return; }
   const q = $("#i_search").value.toLowerCase();
   const list = PK.items.filter((i) => !q || i.code.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
+  if (O1() && !PK.items.length) { $("#i_list").innerHTML = '<div class="msg ok">No Other items: the Estimator engines produce every item of this bill from the work you record. Nothing to set here.</div>'; return; }
   $("#i_list").innerHTML = list.map((i) => {
     const k = unitKind(i.unit), d = dimsFor(i), done = RECS.filter((r) => r.code === i.code).reduce((a, r) => a + r.qty, 0);
     const pc = i.quantity ? done / i.quantity * 100 : 0;
@@ -377,7 +547,7 @@ async function doExport(all) {
   if (!list.length) { msg("#x_msg", "warn", "Nothing to export."); return; }
   const photos = {};
   for (const r of list) for (const p of r.photos) photos[p] = await DB.photo(p);
-  const out = {kind: "bespa-measurements", version: 1, project: PK.name, project_key: PK.key, period_end: end, all,
+  const out = {kind: "bespa-measurements", version: O1() ? 2 : 1, project: PK.name, project_key: PK.key, period_end: end, all,
     exported: new Date().toISOString(), measured_by: [...new Set(list.map((r) => r.by))], records: list, photos, dims: DIMS};
   const blob = new Blob([JSON.stringify(out)], {type: "application/json"});
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
@@ -390,7 +560,9 @@ $("#x_go").onclick = () => doExport(false);
 $("#x_all").onclick = () => doExport(true);
 
 function drawSetup() {
-  $("#p_info").innerHTML = PK ? `<b>${esc(PK.name)}</b><br>${PK.roads.length} road(s), ${PK.items.length} items, ${PK.culverts.length} culverts and structures<br>
+  $("#p_info").innerHTML = PK ? `<b>${esc(PK.name)}</b><br>${PK.roads.length} road(s), ` +
+    (O1() ? `${O1().roads.reduce((t, r) => t + r.activities.length, 0)} activities and ${O1().roads.reduce((t, r) => t + r.points.length, 0)} culverts/structures from the design, ${PK.items.length} Other items<br>`
+      : `${PK.items.length} items, ${PK.culverts.length} culverts and structures<br>`) + `
     Programme ${PK.start} to ${PK.finish}<br>${RECS.length} records on the phone` : "No project loaded.";
 }
 $("#p_file").onchange = async (e) => {

@@ -2,14 +2,19 @@
 
 The Quantity Surveyor's phone app for measuring road works on site. It records what has been built, by road and chainage, works without signal, and sends the period's measurements to the office as one file. The office values them in the **Bespa Progress and Valuation** app, where the laboratory, the Engineer's Deputy and the Engineer review and approve them.
 
-The app holds **no rates and no money**. It measures quantities only.
+The app holds **no rates and no money**.
+
+It works in one of two ways, decided by the site pack:
+
+- **Bills from the Road BOQ Estimator (version 2 site pack).** You record the **work done**: which activity, from where to where, and which culverts are finished. You type no dimensions. In the office, the Estimator's own two engines work out every item from your records, using the design: materials, concrete, formwork, reinforcement, pipes, binder, chippings and haulage. See sections 3 and 4.
+- **Bills from any other source (version 1 site pack).** You measure each BOQ item by its dimensions. See sections 3b and 4b.
 
 ---
 
 ## 1. Install it on the phone (once)
 
 1. Open the app's address in **Chrome** on the phone, with signal:
-   `https://<user-name>.github.io/Road_Measurement_App/`
+   `https://kwasi55.github.io/Road_Measurement_App/`
 2. Chrome menu (⋮) → **Add to Home screen**.
 3. Open it once from the home screen while you still have signal. From then on it works offline.
 
@@ -22,7 +27,41 @@ GPS stamping needs the app to be opened from this HTTPS address; allow location 
 
 The pack carries the roads with their lengths, the BOQ items with their units and quantities, and the culverts. Loading a newer pack of the **same** project keeps your records. Loading a **different** project asks before it removes the old project's records.
 
-## 3. Set the dimensions (Items), once per item
+## 3. Estimator bills: what the site pack holds
+
+The pack carries the design of each road: the **activities** with the stretches where the design has them, the **culverts and structures** with their size and design length, and any **Other items**. Other items are bill items that the engines do not produce, and they are measured by dimensions as in 3b.
+
+| Activity | Recorded as |
+|---|---|
+| Site clearance, formation (blading, reshaping or scarifying), cut or fill to widen, raise road | From – To |
+| Side ditch, U-drain, trapezoidal drain, kerb, retaining wall (left and right separately), scour checks | From – To |
+| Sub-base, base, prime, first seal, second seal | From – To |
+| Road furniture and markings (signs, studs, lines, ramps) | From – To, after the seal |
+| Culvert or structure | Completed (as-built length), or in progress (% constructed) |
+
+Widths, thicknesses, drain types, vegetation class and haul distances come **from the design**. The phone cannot change them. Work that differs from the design is paid only under an approved variation BOQ.
+
+## 4. Estimator bills: record the work (Measure)
+
+1. Check the **date**, **Measured by** and the **road**.
+2. **Work done**: choose the activity. The app shows where the design has it and what is paid so far. Enter **From** and **To**.
+   The card shows what will be paid for that activity after the record. Payment is in **whole 50 m stations, rounded down**: records of the same activity are first joined, then each stretch is cut back to whole stations. A part station is paid once it is complete. For example, 0+000–0+275 pays 0+000–0+250. The next record, 0+275–0+620, makes the stretch 0+000–0+600.
+3. **Culverts**: choose the culvert from the design list.
+   - **Completed** with the as-built length. It is paid up to the design length; a longer culvert needs the Engineer's approval and a variation order for the excess.
+   - **In progress** with the percentage constructed. This is for the progress report only; a culvert is paid on completion.
+4. **Other items** (only when the pack has some): measured by dimensions as in 4b.
+5. Add notes, photos and a GPS stamp, then **Save**.
+
+### What the app refuses
+
+- A stretch of the same activity recorded twice.
+- An activity where the design has none ("additional work is paid only under an approved variation BOQ").
+- A layer ahead of the layer below it, over the stations it would pay: base before sub-base, prime before base, first seal before prime, second seal or road furniture before the first seal.
+- A chainage outside the road, or a culvert recorded completed twice.
+
+It **warns** when part of a record lies outside the design, when a record completes no whole station yet, and when a culvert is longer or shorter than its design.
+
+## 3b. Other bills: set the dimensions (Items), once per item
 
 Every record computes its own quantity: the **From** and **To** chainages give the length, and the item's dimensions do the rest.
 
@@ -35,28 +74,18 @@ Every record computes its own quantity: the **From** and **To** chainages give t
 | litre (primer, cutter, binder) | width and spray rate (l/m²) | length × width × rate |
 | nr, t, sum, m³·km and the like | nothing | the number you enter on the record |
 
-**Bills from the Road BOQ Estimator** arrive with their design values already set: formation width for sub-base, base, reshaping and fill; clearing width; primer width with binder and cutter rates; seal width and first-seal rate; chipping spreads. Each value is shown with its source and can be changed. For the second seal coat, enter the second-seal rate. Bills from other sources start empty: type the dimensions once.
-
 The Items tab also shows, for each item, the BOQ quantity, the quantity measured so far and the percentage.
 
-## 4. Measure (Measure)
+## 4b. Other bills: measure (Measure)
 
-1. Check the **date** and **Measured by**.
-2. Choose the **BOQ item**: type part of its code or description in the search box (e.g. `R114`, `drain`, `kerb`) and pick it from the list. Then choose the **road**.
+1. Check the **date**, **Measured by** and the **road**.
+2. Choose the **BOQ item**: type part of its code or description in the search box (e.g. `R114`, `drain`, `kerb`) and pick it from the list.
 3. For work along the road: **From** and **To** chainage *on that road* (metres from its start) and the **side**: LHS, RHS or B/S.
    For culverts, ramps, signs and other point items: the **chainage** and the **number**.
 4. Check the quantity shown. If the work differs from the dimensions (wider at a junction, say), tick *The work differs…*, type the quantity and give the reason.
-5. Add **photos** (they are reduced in size on the phone) and press **Stamp GPS** if you want the position recorded.
-6. **Save measurement**. The next record starts where this one ended.
+5. Add **photos** and a GPS stamp if wanted, then **Save**. The next record starts where this one ended.
 
-### What the app refuses
-
-- Measuring the same stretch of the same item twice (both sides overlap either side).
-- A layer ahead of the layer below it: base before sub-base, kerbs or primer before base, seal before primer, over the same chainages.
-- A chainage outside the road's length.
-- A record without a quantity, without the measurer's name, or a hand-entered quantity without a reason.
-
-It **warns** (and lets you continue) when an item's measured total passes its BOQ quantity.
+The app refuses a stretch measured twice, a layer ahead of the layer below it, a chainage outside the road, and a record without a quantity, a measurer's name or (for a hand-entered quantity) a reason. It warns when an item's measured total passes its BOQ quantity.
 
 ## 5. Review (Records)
 
@@ -72,7 +101,7 @@ The office imports the file into Progress and Valuation. A file imported twice a
 
 ## 7. What happens next (in the office)
 
-Every record leaves the phone as *recorded*. In Progress and Valuation:
+Every record leaves the phone as *recorded*. In Progress and Valuation, the **Measured work** tab imports the file and values the work to a period end. For Estimator bills, both Estimator engines (the Python port and the LibreOffice master) measure everything recorded to date and must agree. This month's quantities are the total to date less the previous valuation, and they are valued at the contract rates. The Measured BOQ and taking-off sheets come out as Excel, checked by LibreOffice. Then:
 
 | Role | Does |
 |---|---|
@@ -96,7 +125,9 @@ Work that fails its test counts as progress but is not paid until it is re-teste
 |---|---|
 | "Load the site pack first" | Setup → load the `…_site_pack.json` from the office |
 | Quantity shows "set the width…" | Items tab → type the item's dimensions |
-| "A layer cannot be measured ahead of the layer below it" | Measure the lower layer over those chainages first |
+| "A layer cannot be measured ahead of the layer below it" / "cannot be recorded ahead" | Record the lower layer over those chainages first |
+| "The design has no such work here" | The design does not have that activity there; ask the Engineer about a variation BOQ |
+| "waits until its 50 m station is complete" | Nothing is wrong: the part station is paid when the rest of it is recorded |
 | "Already measured" | That stretch is recorded; check Records, delete the wrong one if it is not yet sent |
 | GPS not read | Open the app from its https address, allow location, stand in the open |
 | The office says the file belongs to another project | Load that project's site pack on the phone and export again |
