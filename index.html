@@ -50,7 +50,8 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
   <div id="mform">
     <div class="row"><div><label>Date</label><input id="m_date" type="date"></div>
       <div><label>Measured by</label><input id="m_by" placeholder="Quantity Surveyor"></div></div>
-    <label>BOQ item</label><select id="m_item"></select>
+    <label>BOQ item</label><input id="m_search" placeholder="Search item code or description" autocomplete="off">
+    <select id="m_item" style="margin-top:6px"></select>
     <div id="m_dims" class="muted"></div>
     <label>Road</label><select id="m_road"></select>
     <div id="lin">
@@ -83,7 +84,7 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
 <!-- ============ ITEMS ============ -->
 <section id="s-items">
   <h2>Items and dimensions</h2>
-  <p class="muted">Type the dimensions of each item once; every record then computes its quantity. Items measured by number, litre, tonne or sum take the quantity directly.</p>
+  <p class="muted">Set each item once; every record then computes its quantity from the From and To chainages. Lengths (m) need nothing; areas (m²) a width; volumes (m³) a width and a height, depth or thickness; litres a width and spray rate. Number, tonne and sum items take the quantity on each record. Bills from the Road BOQ Estimator arrive with these filled in.</p>
   <input id="i_search" placeholder="Search item or description">
   <div id="i_list"></div>
 </section>
@@ -159,21 +160,29 @@ function isPoint(it) {
   const f = famOf(it); return f.startsWith("CULV") || ["RAMPS", "SIGNS", "DEMOL"].includes(f) || unitKind(it.unit) === "direct";
 }
 function dimsFor(it) {
-  const d = DIMS[it.code] || {};
-  return {perSide: d.perSide ?? PER_SIDE.includes(famOf(it)), width: d.width ?? null, thick: d.thick ?? null, rate: d.rate ?? null, size: d.size || ""};
+  const d = DIMS[it.code] || {}, p = it.dims || {};
+  return {perSide: d.perSide ?? PER_SIDE.includes(famOf(it)), width: d.width ?? p.width ?? null, thick: d.thick ?? p.thick ?? null,
+    rate: d.rate ?? p.rate ?? null, size: d.size || ""};
+}
+function thirdLabel(it) {
+  const f = famOf(it), c = it.code.toUpperCase();
+  if (f === "FILL" && !/^E[12345]/.test(c)) return ["Height of fill (m)", "e.g. 0.60"];
+  if (["ROCK", "DITCH", "DEMOL"].includes(f) || /^E[2-5]/.test(c)) return ["Depth (m)", "e.g. 0.50"];
+  if (["PRIME", "SEAL"].includes(f)) return ["Spread (m³ per m²)", "e.g. 0.0083"];
+  return ["Thickness (m)", "e.g. 0.15"];
 }
 function compute(it, from, to, sd, count) {
   const k = unitKind(it.unit), d = dimsFor(it);
   if (isPoint(it)) return {q: +count || 0, how: `${fmt(+count || 0, 2)} ${it.unit}`};
   const L = Math.max(0, (+to || 0) - (+from || 0));
   const sides = d.perSide && sd === "B/S" ? 2 : 1;
-  if (k === "len") return {q: L * sides, how: `${fmt(L, 1)} m${sides === 2 ? " × 2 sides" : ""}${d.size ? " · " + d.size : ""}`};
+  if (k === "len") return {q: L * sides, how: `${fmt(L, 1)} m${sides === 2 ? " × 2 sides" : ""}`};
   if (k === "area") return d.width ? {q: L * d.width * sides, how: `${fmt(L, 1)} m × ${d.width} m${sides === 2 ? " × 2" : ""}`} : {q: null, how: "set the width on the Items tab"};
   if (k === "rate") return d.width && d.rate ? {q: L * d.width * d.rate * sides, how: `${fmt(L, 1)} m × ${d.width} m × ${d.rate} l/m²`}
     : {q: null, how: "set the width and spray rate on the Items tab"};
   if (k === "ha") return d.width ? {q: L * d.width * sides / 10000, how: `${fmt(L, 1)} m × ${d.width} m ÷ 10,000`} : {q: null, how: "set the width on the Items tab"};
   if (k === "vol") return d.width && d.thick ? {q: L * d.width * d.thick * sides, how: `${fmt(L, 1)} m × ${d.width} m × ${d.thick} m${sides === 2 ? " × 2" : ""}`}
-    : {q: null, how: "set the width and thickness on the Items tab"};
+    : {q: null, how: `set the width and ${thirdLabel(it)[0].split(" (")[0].toLowerCase()} on the Items tab`};
   return {q: null, how: ""};
 }
 
@@ -223,14 +232,22 @@ function drawForm() {
   $("#noproj").style.display = PK ? "none" : ""; $("#mform").style.display = PK ? "" : "none";
   $("#hdr").textContent = PK ? PK.name : "No project loaded";
   if (!PK) return;
-  const bills = [...new Set(PK.items.map((i) => i.bill))];
-  $("#m_item").innerHTML = bills.map((b) => `<optgroup label="${esc(b)}">` + PK.items.filter((i) => i.bill === b)
-    .map((i) => `<option value="${esc(i.code)}">${esc(i.code)} · ${esc(i.description.slice(0, 60))} (${esc(i.unit)})</option>`).join("") + "</optgroup>").join("");
+  fillItems("");
   $("#m_road").innerHTML = PK.roads.map((r) => `<option>${esc(r.name)}</option>`).join("");
   const last = localStorage.getItem("bm_last"); if (last) { try { const l = JSON.parse(last); $("#m_item").value = l.code; $("#m_road").value = l.road; $("#m_from").value = l.to; } catch (e) {} }
   if (!$("#m_date").value) $("#m_date").value = today();
   $("#m_by").value = localStorage.getItem("bm_by") || "";
   onItem();
+}
+function fillItems(q) {
+  q = (q || "").toLowerCase().trim();
+  const cur = $("#m_item").value;
+  const list = PK.items.filter((i) => !q || i.code.toLowerCase().includes(q) || i.description.toLowerCase().includes(q) || (i.family || "").toLowerCase().includes(q));
+  const bills = [...new Set(list.map((i) => i.bill))];
+  $("#m_item").innerHTML = list.length ? bills.map((b) => `<optgroup label="${esc(b)}">` + list.filter((i) => i.bill === b)
+    .map((i) => `<option value="${esc(i.code)}">${esc(i.code)} · ${esc(i.description.slice(0, 60))} (${esc(i.unit)})</option>`).join("") + "</optgroup>").join("")
+    : `<option value="">No item matches "${esc(q)}"</option>`;
+  if (list.some((i) => i.code === cur)) $("#m_item").value = cur;
 }
 function onItem() {
   const it = item($("#m_item").value), pt = isPoint(it);
@@ -238,7 +255,7 @@ function onItem() {
   const d = dimsFor(it), k = unitKind(it.unit);
   const done = RECS.filter((r) => r.code === it.code).reduce((a, r) => a + r.qty, 0);
   $("#m_dims").innerHTML = `<span class="pill">${esc(it.family || "")}</span> BOQ ${fmt(it.quantity)} ${esc(it.unit)} · measured ${fmt(done)} ` +
-    (k === "area" || k === "ha" ? `· width ${d.width ?? "<b>not set</b>"} m` : k === "vol" ? `· ${d.width ?? "?"} m × ${d.thick ?? "?"} m`
+    (k === "area" || k === "ha" ? `· width ${d.width ?? "<b>not set</b>"} m` : k === "vol" ? `· ${d.width ?? "?"} m × ${d.thick ?? "?"} (${thirdLabel(it)[0].split(" (")[0].toLowerCase()})`
       : k === "rate" ? `· ${d.width ?? "?"} m × ${d.rate ?? "?"} l/m²` : "") +
     (d.perSide ? " · measured per side" : "");
   recalc();
@@ -253,6 +270,7 @@ function recalc() {
 }
 ["m_from", "m_to", "m_count", "m_oq"].forEach((k) => ($("#" + k).oninput = recalc));
 $("#m_item").onchange = onItem;
+$("#m_search").oninput = () => { fillItems($("#m_search").value); onItem(); };
 $("#m_ovr").onchange = () => { $("#ovr").style.display = $("#m_ovr").checked ? "" : "none"; recalc(); };
 $("#m_side").querySelectorAll("button").forEach((b) => (b.onclick = () => {
   side = b.dataset.v; $("#m_side").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); recalc(); }));
@@ -274,6 +292,7 @@ function shrink(file) {
       img.src = rd.result; }; rd.readAsDataURL(file); });
 }
 $("#m_save").onclick = async () => {
+  if (!$("#m_item").value) { msg("#m_msg", "bad", "Choose a BOQ item."); return; }
   const it = item($("#m_item").value), pt = isPoint(it), q = recalc();
   const rec = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date: $("#m_date").value, by: $("#m_by").value.trim(),
     code: it.code, unit: it.unit, road: $("#m_road").value,
@@ -326,13 +345,15 @@ function drawItems() {
   $("#i_list").innerHTML = list.map((i) => {
     const k = unitKind(i.unit), d = dimsFor(i), done = RECS.filter((r) => r.code === i.code).reduce((a, r) => a + r.qty, 0);
     const pc = i.quantity ? done / i.quantity * 100 : 0;
-    const f = (key, lab, v) => `<div><label>${lab}</label><input data-c="${esc(i.code)}" data-k="${key}" type="number" step="any" inputmode="decimal" value="${v ?? ""}"></div>`;
+    const f = (key, lab, v, ph) => `<div><label>${lab}</label><input data-c="${esc(i.code)}" data-k="${key}" type="number" step="any" inputmode="decimal" placeholder="${ph || ""}" value="${v ?? ""}"></div>`;
     return `<div class="card"><small class="code">${esc(i.code)}</small> · ${esc(i.unit)} <span class="pill">${esc(i.family)}</span><div>${esc(i.description)}</div>
       <div class="muted">BOQ ${fmt(i.quantity)} · measured ${fmt(done)} (${fmt(pc, 0)} %)</div><div class="bar ${pc > 100 ? "over" : ""}"><i style="width:${Math.min(pc, 100)}%"></i></div>
-      ${isPoint(i) ? '<div class="muted">Quantity entered on each record.</div>' : `<div class="row">
-        ${["area", "vol", "ha", "rate"].includes(k) ? f("width", "Width (m)", d.width) : ""}${k === "vol" ? f("thick", "Thickness (m) or spread (m³/m²)", d.thick) : ""}${k === "rate" ? f("rate", "Spray rate (l/m²)", d.rate) : ""}
-        ${k === "len" ? `<div><label>Size / type</label><input data-c="${esc(i.code)}" data-k="size" value="${esc(d.size)}" placeholder="e.g. 600x600"></div>` : ""}</div>
-        <label><input type="checkbox" data-c="${esc(i.code)}" data-k="perSide" ${d.perSide ? "checked" : ""} style="width:auto"> Measured per side (B/S counts twice)</label>`}</div>`;
+      ${isPoint(i) ? '<div class="muted">Quantity entered on each record (number, tonnes, litres or sum).</div>'
+        : k === "len" ? `<div class="muted">Nothing to set: the length comes from the From and To chainages.</div>
+          <label><input type="checkbox" data-c="${esc(i.code)}" data-k="perSide" ${d.perSide ? "checked" : ""} style="width:auto"> Measured per side (B/S counts twice)</label>`
+        : `<div class="row">${f("width", "Width (m)", d.width, "Width in m, e.g. 7.0")}
+          ${k === "vol" ? f("thick", thirdLabel(i)[0], d.thick, thirdLabel(i)[1]) : ""}${k === "rate" ? f("rate", "Spray rate (l/m²)", d.rate, "e.g. 1.2") : ""}</div>
+          <div class="muted">Length from the chainages${d.perSide ? "; B/S counts twice" : ""}.${i.dims ? ` Default from the ${esc(i.dims.source)}: ${esc(i.dims.note)}.` : ""}</div>`}</div>`;
   }).join("");
   $("#i_list").querySelectorAll("[data-c]").forEach((el) => (el.onchange = async () => {
     const c = el.dataset.c, k = el.dataset.k; DIMS[c] = DIMS[c] || {};

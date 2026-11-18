@@ -24,23 +24,25 @@ The pack carries the roads with their lengths, the BOQ items with their units an
 
 ## 3. Set the dimensions (Items), once per item
 
-Type each item's dimensions once; every record then computes its own quantity.
+Every record computes its own quantity: the **From** and **To** chainages give the length, and the item's dimensions do the rest.
 
-| Unit of the item | What to type | Quantity of a record |
+| Unit of the item | What to set on the Items tab | Quantity of a record |
 |---|---|---|
-| m (drains, ditches, kerbs, markings) | Size / type (e.g. `600x600`), and whether it is measured per side | length (× 2 for both sides) |
-| m² (sub-base, base, clearing) | Width | length × width |
-| m³ (fill, concrete) | Width, and thickness (or chipping spread in m³/m²) | length × width × thickness |
-| litre (primer, binder) | Width and spray rate (l/m²) | length × width × rate |
-| ha | Width | length × width ÷ 10,000 |
+| m (drains, ditches, kerbs, markings) | nothing | length (× 2 for B/S on drains, ditches and kerbs) |
+| m² (sub-base, base, reshaping) | width | length × width |
+| ha (clearing) | width | length × width ÷ 10,000 |
+| m³ (fill, excavation, concrete, chippings) | width and height of fill, depth or thickness (spread in m³ per m² for chippings) | length × width × height |
+| litre (primer, cutter, binder) | width and spray rate (l/m²) | length × width × rate |
 | nr, t, sum, m³·km and the like | nothing | the number you enter on the record |
+
+**Bills from the Road BOQ Estimator** arrive with their design values already set: formation width for sub-base, base, reshaping and fill; clearing width; primer width with binder and cutter rates; seal width and first-seal rate; chipping spreads. Each value is shown with its source and can be changed. For the second seal coat, enter the second-seal rate. Bills from other sources start empty: type the dimensions once.
 
 The Items tab also shows, for each item, the BOQ quantity, the quantity measured so far and the percentage.
 
 ## 4. Measure (Measure)
 
 1. Check the **date** and **Measured by**.
-2. Choose the **BOQ item** and the **road**.
+2. Choose the **BOQ item**: type part of its code or description in the search box (e.g. `R114`, `drain`, `kerb`) and pick it from the list. Then choose the **road**.
 3. For work along the road: **From** and **To** chainage *on that road* (metres from its start) and the **side**: LHS, RHS or B/S.
    For culverts, ramps, signs and other point items: the **chainage** and the **number**.
 4. Check the quantity shown. If the work differs from the dimensions (wider at a junction, say), tick *The work differs…*, type the quantity and give the reason.
