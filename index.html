@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f3a5f">
+<title>Bespa Measurement</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<style>
+:root{--ink:#0b0b0b;--ink2:#52514e;--muted:#8a8984;--line:#e4e3de;--bg:#fcfcfb;--panel:#f5f4f0;--navy:#1f3a5f;--ok:#0b5d0b;--okbg:#e5f4e4;--bad:#9a1c1c;--badbg:#fbebeb;--warn:#7a4b00;--warnbg:#f9eeda;
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;font-size:15px;color:var(--ink)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);padding-bottom:70px}
+header{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;padding:10px 14px}
+header .t{font-weight:700;letter-spacing:.05em;font-size:13px}
+header .p{font-size:13px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);z-index:5}
+nav button{flex:1;border:0;background:none;padding:10px 2px 12px;font:inherit;font-size:13px;color:var(--ink2)}
+nav button.on{color:var(--navy);font-weight:700;box-shadow:inset 0 3px 0 var(--navy)}
+main{padding:12px 14px}
+section{display:none}section.on{display:block}
+h2{font-size:17px;margin:4px 0 10px}
+label{display:block;font-size:13px;color:var(--ink2);margin:10px 0 3px}
+input,select,textarea{width:100%;font:inherit;padding:9px 10px;border:1px solid #cfcec8;border-radius:7px;background:#fff}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.btn{display:inline-block;font:inherit;font-weight:600;padding:10px 14px;border-radius:8px;border:1px solid var(--navy);background:var(--navy);color:#fff;text-align:center;text-decoration:none}
+.btn.sec{background:#fff;color:var(--navy)}
+.btn.wide{display:block;width:100%;margin-top:12px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
+.muted{color:var(--muted);font-size:13px}
+.qty{font-size:22px;font-weight:700;color:var(--navy)}
+.msg{border-radius:8px;padding:8px 10px;margin:8px 0;font-size:14px}
+.msg.ok{background:var(--okbg);color:var(--ok)}.msg.bad{background:var(--badbg);color:var(--bad)}.msg.warn{background:var(--warnbg);color:var(--warn)}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;background:var(--panel);color:var(--ink2)}
+.bar{height:6px;border-radius:3px;background:var(--panel);overflow:hidden;margin-top:4px}.bar i{display:block;height:100%;background:var(--navy)}
+.bar.over i{background:#e34948}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.seg{display:flex;border:1px solid #cfcec8;border-radius:8px;overflow:hidden}.seg button{flex:1;border:0;background:#fff;padding:9px;font:inherit}.seg button.on{background:var(--navy);color:#fff}
+small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
+</style>
+</head>
+<body>
+<header><div class="t">BESPA MEASUREMENT</div><div class="p" id="hdr">No project loaded</div></header>
+<main>
+<!-- ============ MEASURE ============ -->
+<section id="s-measure" class="on">
+  <h2>New measurement</h2>
+  <div id="noproj" class="msg warn">Load the site pack first (Setup).</div>
+  <div id="mform">
+    <div class="row"><div><label>Date</label><input id="m_date" type="date"></div>
+      <div><label>Measured by</label><input id="m_by" placeholder="Quantity Surveyor"></div></div>
+    <label>BOQ item</label><select id="m_item"></select>
+    <div id="m_dims" class="muted"></div>
+    <label>Road</label><select id="m_road"></select>
+    <div id="lin">
+      <div class="row"><div><label>From (m)</label><input id="m_from" type="number" inputmode="decimal" step="any"></div>
+        <div><label>To (m)</label><input id="m_to" type="number" inputmode="decimal" step="any"></div></div>
+      <label>Side</label><div class="seg" id="m_side"><button data-v="LHS">LHS</button><button data-v="RHS">RHS</button><button data-v="B/S" class="on">B/S</button></div>
+    </div>
+    <div id="pt" style="display:none">
+      <label>Chainage (m)</label><input id="m_ch" type="number" inputmode="decimal" step="any">
+      <label>Number / quantity</label><input id="m_count" type="number" inputmode="decimal" step="any" value="1">
+    </div>
+    <div class="card"><div class="muted">Quantity for this record</div><div class="qty" id="m_qty">—</div><div class="muted" id="m_calc"></div></div>
+    <label><input type="checkbox" id="m_ovr" style="width:auto"> The work differs from the dimensions: enter the quantity</label>
+    <div id="ovr" style="display:none"><div class="row"><div><label>Quantity</label><input id="m_oq" type="number" inputmode="decimal" step="any"></div>
+      <div><label>Reason</label><input id="m_or" placeholder="e.g. wider at junction"></div></div></div>
+    <label>Notes</label><textarea id="m_note" rows="2"></textarea>
+    <label>Photos</label><input id="m_photo" type="file" accept="image/*" capture="environment" multiple>
+    <div class="thumbs" id="m_thumbs"></div>
+    <div class="row" style="margin-top:12px"><button class="btn sec" id="m_gps">Stamp GPS</button><button class="btn" id="m_save">Save measurement</button></div>
+    <div id="m_gpsv" class="muted"></div>
+    <div id="m_msg"></div>
+  </div>
+</section>
+<!-- ============ RECORDS ============ -->
+<section id="s-records">
+  <h2>Records</h2>
+  <div class="row"><select id="r_filter"></select><select id="r_road"></select></div>
+  <div id="r_list"></div>
+</section>
+<!-- ============ ITEMS ============ -->
+<section id="s-items">
+  <h2>Items and dimensions</h2>
+  <p class="muted">Type the dimensions of each item once; every record then computes its quantity. Items measured by number, litre, tonne or sum take the quantity directly.</p>
+  <input id="i_search" placeholder="Search item or description">
+  <div id="i_list"></div>
+</section>
+<!-- ============ EXPORT ============ -->
+<section id="s-export">
+  <h2>Send to the office</h2>
+  <p class="muted">Export the period's records as one file and send it to the office (e-mail, WhatsApp or USB). The office imports it into the Progress and Valuation app; the Engineer approves there.</p>
+  <label>Period ends</label><input id="x_end" type="date">
+  <div id="x_sum" class="card"></div>
+  <button class="btn wide" id="x_go">Export the period file</button>
+  <button class="btn sec wide" id="x_all">Export all records</button>
+  <div id="x_msg"></div>
+</section>
+<!-- ============ SETUP ============ -->
+<section id="s-setup">
+  <h2>Setup</h2>
+  <div id="p_info" class="card muted">No project loaded.</div>
+  <label>Load the site pack (from the Progress and Valuation app)</label>
+  <input id="p_file" type="file" accept=".json,application/json">
+  <div id="p_msg"></div>
+  <div class="card muted">The site pack holds the roads, the BOQ items with their units and quantities, and the culverts. It holds no rates. Loading a newer pack of the same project keeps your records and dimensions.</div>
+  <button class="btn sec wide" id="p_reset">Remove this project from the phone</button>
+</section>
+</main>
+<nav>
+  <button data-s="measure" class="on">Measure</button><button data-s="records">Records</button>
+  <button data-s="items">Items</button><button data-s="export">Export</button><button data-s="setup">Setup</button>
+</nav>
+<script>
+"use strict";
+/* ---------- storage (IndexedDB: works offline, holds photos) ---------- */
+const DB = (() => {
+  let db;
+  const open = () => new Promise((res, rej) => {
+    if (db) return res(db);
+    const r = indexedDB.open("bespa-measure", 1);
+    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore("kv"); d.createObjectStore("rec", {keyPath: "id"}); d.createObjectStore("photo"); };
+    r.onsuccess = () => { db = r.result; res(db); }; r.onerror = () => rej(r.error);
+  });
+  const tx = async (store, mode, fn) => { const d = await open(); return new Promise((res, rej) => {
+    const t = d.transaction(store, mode), s = t.objectStore(store), out = fn(s);
+    t.oncomplete = () => res(out instanceof IDBRequest ? out.result : out); t.onerror = () => rej(t.error); }); };
+  return {
+    get: (k) => tx("kv", "readonly", (s) => s.get(k)), set: (k, v) => tx("kv", "readwrite", (s) => s.put(v, k)),
+    recs: () => tx("rec", "readonly", (s) => s.getAll()), put: (r) => tx("rec", "readwrite", (s) => s.put(r)),
+    del: (id) => tx("rec", "readwrite", (s) => s.delete(id)),
+    photo: (k) => tx("photo", "readonly", (s) => s.get(k)), putPhoto: (k, v) => tx("photo", "readwrite", (s) => s.put(v, k)),
+    delPhoto: (k) => tx("photo", "readwrite", (s) => s.delete(k)),
+    clear: async () => { for (const st of ["kv", "rec", "photo"]) await tx(st, "readwrite", (s) => s.clear()); },
+  };
+})();
+
+const $ = (s) => document.querySelector(s);
+const fmt = (v, d = 2) => (v == null || isNaN(v) ? "—" : Number(v).toLocaleString("en-GB", {minimumFractionDigits: d, maximumFractionDigits: d}));
+const ch = (m) => { m = Math.round(m || 0); return `${Math.floor(m / 1000)}+${String(m % 1000).padStart(3, "0")}`; };
+const today = () => new Date().toISOString().slice(0, 10);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+let PK = null, DIMS = {}, RECS = [], side = "B/S", pending = [], gps = null;
+
+/* ---------- how an item is measured ---------- */
+function unitKind(u) {
+  u = String(u || "").toLowerCase().replace(/[\s.]/g, "");
+  if (["m", "lm", "linm", "metre", "meter"].includes(u)) return "len";
+  if (["sqm", "m2", "m²"].includes(u)) return "area";
+  if (["cum", "m3", "m³"].includes(u)) return "vol";
+  if (u === "ha") return "ha";
+  if (["litre", "litres", "liter", "l", "ltr", "lit"].includes(u)) return "rate";
+  return "direct";                        // nr, no, t, litre, sum, item, m3-km, %
+}
+const PER_SIDE = ["DITCH", "DRAIN-U", "DRAIN-T", "KERB"];
+function famOf(it) { return String(it.family || "").split("|")[0]; }
+function isPoint(it) {
+  const f = famOf(it); return f.startsWith("CULV") || ["RAMPS", "SIGNS", "DEMOL"].includes(f) || unitKind(it.unit) === "direct";
+}
+function dimsFor(it) {
+  const d = DIMS[it.code] || {};
+  return {perSide: d.perSide ?? PER_SIDE.includes(famOf(it)), width: d.width ?? null, thick: d.thick ?? null, rate: d.rate ?? null, size: d.size || ""};
+}
+function compute(it, from, to, sd, count) {
+  const k = unitKind(it.unit), d = dimsFor(it);
+  if (isPoint(it)) return {q: +count || 0, how: `${fmt(+count || 0, 2)} ${it.unit}`};
+  const L = Math.max(0, (+to || 0) - (+from || 0));
+  const sides = d.perSide && sd === "B/S" ? 2 : 1;
+  if (k === "len") return {q: L * sides, how: `${fmt(L, 1)} m${sides === 2 ? " × 2 sides" : ""}${d.size ? " · " + d.size : ""}`};
+  if (k === "area") return d.width ? {q: L * d.width * sides, how: `${fmt(L, 1)} m × ${d.width} m${sides === 2 ? " × 2" : ""}`} : {q: null, how: "set the width on the Items tab"};
+  if (k === "rate") return d.width && d.rate ? {q: L * d.width * d.rate * sides, how: `${fmt(L, 1)} m × ${d.width} m × ${d.rate} l/m²`}
+    : {q: null, how: "set the width and spray rate on the Items tab"};
+  if (k === "ha") return d.width ? {q: L * d.width * sides / 10000, how: `${fmt(L, 1)} m × ${d.width} m ÷ 10,000`} : {q: null, how: "set the width on the Items tab"};
+  if (k === "vol") return d.width && d.thick ? {q: L * d.width * d.thick * sides, how: `${fmt(L, 1)} m × ${d.width} m × ${d.thick} m${sides === 2 ? " × 2" : ""}`}
+    : {q: null, how: "set the width and thickness on the Items tab"};
+  return {q: null, how: ""};
+}
+
+/* ---------- checks on save ---------- */
+const NEED = {BASE: "SUB", KERB: "BASE", PRIME: "BASE", SEAL: "PRIME", SEAL1: "PRIME", SEAL2: "SEAL1"};
+const NAMES = {SUB: "sub-base", BASE: "base", PRIME: "primer seal", SEAL: "seal", SEAL1: "first seal"};
+function covered(road, fam, a, b) {
+  const runs = RECS.filter((r) => r.road === road && famOf(item(r.code)) === fam && r.to > r.from).map((r) => [r.from, r.to]).sort((x, y) => x[0] - y[0]);
+  let x = a;
+  for (const [p, q] of runs) { if (p > x + 0.5) break; x = Math.max(x, q); if (x >= b - 0.5) return true; }
+  return x >= b - 0.5;
+}
+function checks(rec, it) {
+  const errs = [], warns = [];
+  const rd = PK.roads.find((r) => r.name === rec.road);
+  if (!rd) errs.push("Choose the road.");
+  if (!isPoint(it)) {
+    if (!(rec.to > rec.from)) errs.push("'To' must be greater than 'From'.");
+    if (rd && (rec.from < 0 || rec.to > rd.length + 1)) errs.push(`${rec.road} runs from 0 to ${ch(rd.length)}; this record is outside it.`);
+    const clash = RECS.find((r) => r.id !== rec.id && r.code === rec.code && r.road === rec.road && r.to > r.from &&
+      r.from < rec.to - 0.5 && rec.from < r.to - 0.5 && (r.side === "B/S" || rec.side === "B/S" || r.side === rec.side));
+    if (clash) errs.push(`Already measured: ${ch(clash.from)} to ${ch(clash.to)} ${clash.side} on ${clash.date}. A stretch cannot be measured twice.`);
+    const need = NEED[famOf(it)];
+    if (need && PK.items.some((i) => famOf(i) === need) && !covered(rec.road, need, rec.from, rec.to))
+      errs.push(`The ${NAMES[need] || need} is not yet measured over ${ch(rec.from)} to ${ch(rec.to)}; a layer cannot be measured ahead of the layer below it.`);
+  } else {
+    if (rd && (rec.from < 0 || rec.from > rd.length + 1)) errs.push(`Chainage ${ch(rec.from)} is outside ${rec.road}.`);
+    const dup = RECS.find((r) => r.id !== rec.id && r.code === rec.code && r.road === rec.road && Math.abs(r.from - rec.from) < 0.5 && r.date === rec.date);
+    if (dup) warns.push("A record of this item at this chainage already exists for the same day.");
+  }
+  if (!(rec.qty > 0)) errs.push("The quantity is nil.");
+  const done = RECS.filter((r) => r.code === rec.code && r.id !== rec.id).reduce((a, r) => a + r.qty, 0) + (rec.qty || 0);
+  if (it.quantity > 0 && done > it.quantity * 1.0001) warns.push(`Measured to date ${fmt(done)} ${it.unit} passes the BOQ quantity ${fmt(it.quantity)} (${fmt(done / it.quantity * 100, 0)} %).`);
+  return {errs, warns};
+}
+
+/* ---------- views ---------- */
+function item(code) { return PK.items.find((i) => i.code === code) || {code, unit: "", family: ""}; }
+function tab(s) {
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.s === s));
+  document.querySelectorAll("section").forEach((x) => x.classList.toggle("on", x.id === "s-" + s));
+  if (s === "records") drawRecords(); if (s === "items") drawItems(); if (s === "export") drawExport(); if (s === "setup") drawSetup();
+}
+document.querySelectorAll("nav button").forEach((b) => (b.onclick = () => tab(b.dataset.s)));
+
+function drawForm() {
+  $("#noproj").style.display = PK ? "none" : ""; $("#mform").style.display = PK ? "" : "none";
+  $("#hdr").textContent = PK ? PK.name : "No project loaded";
+  if (!PK) return;
+  const bills = [...new Set(PK.items.map((i) => i.bill))];
+  $("#m_item").innerHTML = bills.map((b) => `<optgroup label="${esc(b)}">` + PK.items.filter((i) => i.bill === b)
+    .map((i) => `<option value="${esc(i.code)}">${esc(i.code)} · ${esc(i.description.slice(0, 60))} (${esc(i.unit)})</option>`).join("") + "</optgroup>").join("");
+  $("#m_road").innerHTML = PK.roads.map((r) => `<option>${esc(r.name)}</option>`).join("");
+  const last = localStorage.getItem("bm_last"); if (last) { try { const l = JSON.parse(last); $("#m_item").value = l.code; $("#m_road").value = l.road; $("#m_from").value = l.to; } catch (e) {} }
+  if (!$("#m_date").value) $("#m_date").value = today();
+  $("#m_by").value = localStorage.getItem("bm_by") || "";
+  onItem();
+}
+function onItem() {
+  const it = item($("#m_item").value), pt = isPoint(it);
+  $("#lin").style.display = pt ? "none" : ""; $("#pt").style.display = pt ? "" : "none";
+  const d = dimsFor(it), k = unitKind(it.unit);
+  const done = RECS.filter((r) => r.code === it.code).reduce((a, r) => a + r.qty, 0);
+  $("#m_dims").innerHTML = `<span class="pill">${esc(it.family || "")}</span> BOQ ${fmt(it.quantity)} ${esc(it.unit)} · measured ${fmt(done)} ` +
+    (k === "area" || k === "ha" ? `· width ${d.width ?? "<b>not set</b>"} m` : k === "vol" ? `· ${d.width ?? "?"} m × ${d.thick ?? "?"} m`
+      : k === "rate" ? `· ${d.width ?? "?"} m × ${d.rate ?? "?"} l/m²` : "") +
+    (d.perSide ? " · measured per side" : "");
+  recalc();
+}
+function recalc() {
+  const it = item($("#m_item").value);
+  const r = compute(it, $("#m_from").value, $("#m_to").value, side, $("#m_count").value);
+  const q = $("#m_ovr").checked && $("#m_oq").value !== "" ? +$("#m_oq").value : r.q;
+  $("#m_qty").textContent = q == null ? "—" : `${fmt(q)} ${it.unit}`;
+  $("#m_calc").textContent = $("#m_ovr").checked ? "entered by hand" : r.how;
+  return q;
+}
+["m_from", "m_to", "m_count", "m_oq"].forEach((k) => ($("#" + k).oninput = recalc));
+$("#m_item").onchange = onItem;
+$("#m_ovr").onchange = () => { $("#ovr").style.display = $("#m_ovr").checked ? "" : "none"; recalc(); };
+$("#m_side").querySelectorAll("button").forEach((b) => (b.onclick = () => {
+  side = b.dataset.v; $("#m_side").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); recalc(); }));
+$("#m_gps").onclick = () => {
+  if (!navigator.geolocation) { $("#m_gpsv").textContent = "GPS is not available on this device or page (it needs HTTPS)."; return; }
+  $("#m_gpsv").textContent = "Reading GPS…";
+  navigator.geolocation.getCurrentPosition((p) => { gps = {lat: +p.coords.latitude.toFixed(6), lon: +p.coords.longitude.toFixed(6), acc: Math.round(p.coords.accuracy)};
+    $("#m_gpsv").textContent = `GPS ${gps.lat}, ${gps.lon} (±${gps.acc} m)`; },
+    (e) => ($("#m_gpsv").textContent = "GPS not read: " + e.message), {enableHighAccuracy: true, timeout: 20000});
+};
+$("#m_photo").onchange = async (e) => {
+  for (const f of e.target.files) pending.push(await shrink(f));
+  $("#m_thumbs").innerHTML = pending.map((p) => `<img src="${p}">`).join(""); e.target.value = "";
+};
+function shrink(file) {
+  return new Promise((res) => { const img = new Image(), rd = new FileReader();
+    rd.onload = () => { img.onload = () => { const k = Math.min(1, 1280 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = img.width * k; c.height = img.height * k; c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", 0.72)); };
+      img.src = rd.result; }; rd.readAsDataURL(file); });
+}
+$("#m_save").onclick = async () => {
+  const it = item($("#m_item").value), pt = isPoint(it), q = recalc();
+  const rec = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date: $("#m_date").value, by: $("#m_by").value.trim(),
+    code: it.code, unit: it.unit, road: $("#m_road").value,
+    from: pt ? +$("#m_ch").value : +$("#m_from").value, to: pt ? +$("#m_ch").value : +$("#m_to").value, side: pt ? "" : side,
+    count: pt ? +$("#m_count").value : null, qty: q == null ? 0 : Math.round(q * 1000) / 1000,
+    calc: $("#m_calc").textContent, override: $("#m_ovr").checked ? {qty: +$("#m_oq").value, reason: $("#m_or").value.trim()} : null,
+    dims: dimsFor(it), note: $("#m_note").value.trim(), gps, photos: [], status: "recorded", exported: null, saved: new Date().toISOString()};
+  if (!rec.by) { msg("#m_msg", "bad", "Enter who measured."); return; }
+  if (rec.override && !rec.override.reason) { msg("#m_msg", "bad", "Give the reason for the hand-entered quantity."); return; }
+  const {errs, warns} = checks(rec, it);
+  if (errs.length) { msg("#m_msg", "bad", errs.join("<br>")); return; }
+  if (warns.length && !confirm(warns.join("\n") + "\n\nSave anyway?")) return;
+  for (const [k, p] of pending.entries()) { const key = `${rec.id}-${k}`; await DB.putPhoto(key, p); rec.photos.push(key); }
+  await DB.put(rec); RECS.push(rec);
+  localStorage.setItem("bm_by", rec.by); localStorage.setItem("bm_last", JSON.stringify({code: rec.code, road: rec.road, to: rec.to}));
+  pending = []; gps = null; $("#m_thumbs").innerHTML = ""; $("#m_gpsv").textContent = ""; $("#m_note").value = "";
+  $("#m_ovr").checked = false; $("#ovr").style.display = "none"; $("#m_oq").value = ""; $("#m_or").value = "";
+  if (!pt) { $("#m_from").value = rec.to; $("#m_to").value = ""; }
+  msg("#m_msg", "ok", `Saved: ${rec.code} ${pt ? "at " + ch(rec.from) : ch(rec.from) + " to " + ch(rec.to) + " " + rec.side} on ${rec.road} — ${fmt(rec.qty)} ${rec.unit}` + (warns.length ? "<br>" + warns.join("<br>") : ""));
+  onItem();
+};
+function msg(el, kind, html) { $(el).innerHTML = `<div class="msg ${kind}">${html}</div>`; }
+
+function drawRecords() {
+  if (!PK) { $("#r_list").innerHTML = '<div class="msg warn">No project loaded.</div>'; return; }
+  const codes = [...new Set(RECS.map((r) => r.code))];
+  const f = $("#r_filter").value, rd = $("#r_road").value;
+  $("#r_filter").innerHTML = `<option value="">All items</option>` + codes.map((c) => `<option ${c === f ? "selected" : ""}>${esc(c)}</option>`).join("");
+  $("#r_road").innerHTML = `<option value="">All roads</option>` + PK.roads.map((r) => `<option ${r.name === rd ? "selected" : ""}>${esc(r.name)}</option>`).join("");
+  const list = RECS.filter((r) => (!f || r.code === f) && (!rd || r.road === rd)).sort((a, b) => b.date.localeCompare(a.date) || b.saved.localeCompare(a.saved));
+  $("#r_list").innerHTML = list.length ? list.map((r) => `<div class="card"><b>${esc(r.code)}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
+    <div>${esc(r.road)} · ${r.to > r.from ? ch(r.from) + " to " + ch(r.to) + " " + r.side : "at " + ch(r.from)}</div>
+    <div><b>${fmt(r.qty)} ${esc(r.unit)}</b> <span class="muted">${esc(r.calc)}${r.override ? " — " + esc(r.override.reason) : ""}</span></div>
+    <div class="muted">${r.date} · ${esc(r.by)}${r.note ? " · " + esc(r.note) : ""}${r.photos.length ? " · " + r.photos.length + " photo(s)" : ""}</div>
+    ${r.exported ? "" : `<button class="btn sec" style="margin-top:6px;padding:5px 10px" data-del="${r.id}">Delete</button>`}</div>`).join("")
+    : '<div class="muted">No records yet.</div>';
+  $("#r_list").querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
+    if (!confirm("Delete this record?")) return;
+    const r = RECS.find((x) => x.id === b.dataset.del);
+    for (const p of r.photos) await DB.delPhoto(p);
+    await DB.del(r.id); RECS = RECS.filter((x) => x.id !== r.id); drawRecords();
+  }));
+  $("#r_filter").onchange = drawRecords; $("#r_road").onchange = drawRecords;
+}
+
+function drawItems() {
+  if (!PK) { $("#i_list").innerHTML = '<div class="msg warn">No project loaded.</div>'; return; }
+  const q = $("#i_search").value.toLowerCase();
+  const list = PK.items.filter((i) => !q || i.code.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
+  $("#i_list").innerHTML = list.map((i) => {
+    const k = unitKind(i.unit), d = dimsFor(i), done = RECS.filter((r) => r.code === i.code).reduce((a, r) => a + r.qty, 0);
+    const pc = i.quantity ? done / i.quantity * 100 : 0;
+    const f = (key, lab, v) => `<div><label>${lab}</label><input data-c="${esc(i.code)}" data-k="${key}" type="number" step="any" inputmode="decimal" value="${v ?? ""}"></div>`;
+    return `<div class="card"><small class="code">${esc(i.code)}</small> · ${esc(i.unit)} <span class="pill">${esc(i.family)}</span><div>${esc(i.description)}</div>
+      <div class="muted">BOQ ${fmt(i.quantity)} · measured ${fmt(done)} (${fmt(pc, 0)} %)</div><div class="bar ${pc > 100 ? "over" : ""}"><i style="width:${Math.min(pc, 100)}%"></i></div>
+      ${isPoint(i) ? '<div class="muted">Quantity entered on each record.</div>' : `<div class="row">
+        ${["area", "vol", "ha", "rate"].includes(k) ? f("width", "Width (m)", d.width) : ""}${k === "vol" ? f("thick", "Thickness (m) or spread (m³/m²)", d.thick) : ""}${k === "rate" ? f("rate", "Spray rate (l/m²)", d.rate) : ""}
+        ${k === "len" ? `<div><label>Size / type</label><input data-c="${esc(i.code)}" data-k="size" value="${esc(d.size)}" placeholder="e.g. 600x600"></div>` : ""}</div>
+        <label><input type="checkbox" data-c="${esc(i.code)}" data-k="perSide" ${d.perSide ? "checked" : ""} style="width:auto"> Measured per side (B/S counts twice)</label>`}</div>`;
+  }).join("");
+  $("#i_list").querySelectorAll("[data-c]").forEach((el) => (el.onchange = async () => {
+    const c = el.dataset.c, k = el.dataset.k; DIMS[c] = DIMS[c] || {};
+    DIMS[c][k] = k === "perSide" ? el.checked : k === "size" ? el.value : (el.value === "" ? null : +el.value);
+    await DB.set("dims", DIMS);
+  }));
+}
+$("#i_search").oninput = drawItems;
+
+function monthEnd(d) { const x = new Date(d + "T00:00:00"); return new Date(x.getFullYear(), x.getMonth() + 1, 0).toISOString().slice(0, 10); }
+function drawExport() {
+  if (!PK) { $("#x_sum").innerHTML = "No project loaded."; return; }
+  if (!$("#x_end").value) $("#x_end").value = monthEnd(today());
+  const end = $("#x_end").value, list = RECS.filter((r) => !r.exported && r.date <= end);
+  $("#x_sum").innerHTML = `<b>${list.length}</b> records not yet sent, dated up to ${end}<br><span class="muted">${RECS.length} records on the phone in all</span>`;
+}
+$("#x_end").onchange = drawExport;
+async function doExport(all) {
+  const end = $("#x_end").value || monthEnd(today());
+  const list = all ? RECS.slice() : RECS.filter((r) => !r.exported && r.date <= end);
+  if (!list.length) { msg("#x_msg", "warn", "Nothing to export."); return; }
+  const photos = {};
+  for (const r of list) for (const p of r.photos) photos[p] = await DB.photo(p);
+  const out = {kind: "bespa-measurements", version: 1, project: PK.name, project_key: PK.key, period_end: end, all,
+    exported: new Date().toISOString(), measured_by: [...new Set(list.map((r) => r.by))], records: list, photos, dims: DIMS};
+  const blob = new Blob([JSON.stringify(out)], {type: "application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `${PK.name.replace(/[^\w-]+/g, "_").slice(0, 40)}_measurements_${end.slice(0, 7)}${all ? "_all" : ""}.json`; a.click();
+  if (!all) for (const r of list) { r.exported = end; await DB.put(r); }
+  msg("#x_msg", "ok", `Exported ${list.length} records${Object.keys(photos).length ? " with " + Object.keys(photos).length + " photos" : ""}. Send the file to the office.`);
+  drawExport();
+}
+$("#x_go").onclick = () => doExport(false);
+$("#x_all").onclick = () => doExport(true);
+
+function drawSetup() {
+  $("#p_info").innerHTML = PK ? `<b>${esc(PK.name)}</b><br>${PK.roads.length} road(s), ${PK.items.length} items, ${PK.culverts.length} culverts and structures<br>
+    Programme ${PK.start} to ${PK.finish}<br>${RECS.length} records on the phone` : "No project loaded.";
+}
+$("#p_file").onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const pk = JSON.parse(await f.text());
+    if (pk.kind !== "bespa-site-pack") throw new Error("this is not a site pack from the Progress and Valuation app");
+    pk.key = pk.name;
+    if (PK && PK.key !== pk.key && RECS.length && !confirm(`The phone holds ${RECS.length} records of ${PK.name}. Load ${pk.name} and remove them?`)) return;
+    if (PK && PK.key !== pk.key) { await DB.clear(); RECS = []; DIMS = {}; }
+    PK = pk; await DB.set("pack", pk); msg("#p_msg", "ok", `Loaded ${pk.name}.`); drawForm(); drawSetup();
+  } catch (err) { msg("#p_msg", "bad", "Could not load: " + err.message); }
+  e.target.value = "";
+};
+$("#p_reset").onclick = async () => { if (!confirm("Remove the project and all its records from this phone?")) return; await DB.clear(); PK = null; RECS = []; DIMS = {}; drawForm(); drawSetup(); };
+
+(async () => {
+  PK = await DB.get("pack") || null; DIMS = await DB.get("dims") || {}; RECS = await DB.recs() || [];
+  drawForm();
+  if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>

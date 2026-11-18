@@ -1,0 +1,9 @@
+{
+  "name": "Bespa Measurement",
+  "short_name": "Measure",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fcfcfb",
+  "theme_color": "#1f3a5f",
+  "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}]
+}
