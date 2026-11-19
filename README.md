@@ -7,7 +7,7 @@ The app holds **no rates and no money**.
 It works in one of two ways, decided by the site pack:
 
 - **Bills from the Road BOQ Estimator (version 2 site pack).** You record the **work done**: which activity, from where to where, and which culverts are finished. You type no dimensions. In the office, the Estimator's own two engines work out every item from your records, using the design: materials, concrete, formwork, reinforcement, pipes, binder, chippings and haulage. See sections 3 and 4.
-- **Bills from any other source (version 1 site pack).** You measure each BOQ item by its dimensions. See sections 3b and 4b.
+- **Bills from any other source (version 3 site pack, from 19 Nov 2026).** Two tabs. **BOQ items**: you measure each item by its dimensions (sections 3b and 4b). **Culverts**: you record each culvert or minor structure by its **number** on the road (Culvert No. 1, No. 2 …) as completed, with its as-built length, or in progress. Culvert items (pipes, concrete, formwork, excavation) are paid in the office pro rata to each culvert's design length; haulage is paid in the office from the items it serves, so neither is measured on the phone.
 
 ---
 
@@ -87,7 +87,8 @@ The Items tab also shows, for each item, the BOQ quantity, the quantity measured
 1. Check the **date**, **Measured by** and the **road**.
 2. Choose the **BOQ item**: type part of its code or description in the search box (e.g. `R114`, `drain`, `kerb`) and pick it from the list.
 3. For work along the road: **From** and **To** chainage *on that road* (metres from its start) and the **side**: LHS, RHS or B/S.
-   For culverts, ramps, signs and other point items: the **chainage** and the **number**.
+   For ramps, signs and other point items: the **location number** and the **number** of items.
+   Culverts and minor structures are not BOQ items here: record them on the **Culverts** tab by their number (Completed with the as-built length, or In progress with the percentage).
 4. Check the quantity shown. If the work differs from the dimensions (wider at a junction, say), tick *The work differs…*, type the quantity and give the reason.
 5. Add **photos** and a GPS stamp if wanted, then **Save**. The next record starts where this one ended.
 

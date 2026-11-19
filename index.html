@@ -73,7 +73,7 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
       <div class="muted" id="d_note"></div>
     </div>
     <div id="w_pt" style="display:none">
-      <label>Culvert or structure (from the design)</label><select id="p_pt"></select>
+      <label id="p_lab">Culvert or structure (from the design)</label><select id="p_pt"></select>
       <div id="p_hint" class="muted"></div>
       <label>State</label><div class="seg" id="p_state"><button data-v="complete" class="on">Completed</button><button data-v="progress">In progress</button></div>
       <div id="p_c"><label>As-built length (m)</label><input id="p_len" type="number" inputmode="decimal" step="any">
@@ -91,7 +91,7 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
       <label>Side</label><div class="seg" id="m_side"><button data-v="LHS">LHS</button><button data-v="RHS">RHS</button><button data-v="B/S" class="on">B/S</button></div>
     </div>
     <div id="pt" style="display:none">
-      <label>Chainage (m)</label><input id="m_ch" type="number" inputmode="decimal" step="any">
+      <label id="pt_lab">Chainage (m)</label><input id="m_ch" type="number" inputmode="decimal" step="any">
       <label>Number / quantity</label><input id="m_count" type="number" inputmode="decimal" step="any" value="1">
     </div>
     <div class="card"><div class="muted">Quantity for this record</div><div class="qty" id="m_qty">—</div><div class="muted" id="m_calc"></div></div>
@@ -246,7 +246,7 @@ function checks(rec, it) {
     if (need && PK.items.some((i) => famOf(i) === need) && !covered(rec.road, need, rec.from, rec.to))
       errs.push(`The ${NAMES[need] || need} is not yet measured over ${ch(rec.from)} to ${ch(rec.to)}; a layer cannot be measured ahead of the layer below it.`);
   } else {
-    if (rd && (rec.from < 0 || rec.from > rd.length + 1)) errs.push(`Chainage ${ch(rec.from)} is outside ${rec.road}.`);
+    if (!BR() && rd && (rec.from < 0 || rec.from > rd.length + 1)) errs.push(`Chainage ${ch(rec.from)} is outside ${rec.road}.`);
     const dup = RECS.find((r) => r.id !== rec.id && r.code === rec.code && r.road === rec.road && Math.abs(r.from - rec.from) < 0.5 && r.date === rec.date);
     if (dup) warns.push("A record of this item at this chainage already exists for the same day.");
   }
@@ -259,7 +259,14 @@ function checks(rec, it) {
 /* ---------- Option 1: work done, measured by the Estimator engines ---------- */
 const ST = 50;
 const O1 = () => (PK && PK.option1) || null;
-const o1road = (name) => (O1() ? O1().roads.find((r) => r.name === name) : null);
+/* a bill from another source (19 Nov 2026): dimensional BOQ items, and culverts by number (no chainage) */
+const BR = () => (PK && PK.bill) || null;
+const o1road = (name) => {
+  if (O1()) return O1().roads.find((r) => r.name === name);
+  const r = BR() && BR().roads.find((x) => x.name === name);
+  return r ? {...r, activities: [], stretches: []} : null;
+};
+const ptName = (road, id) => { const rd = o1road(road), p = rd && rd.points.find((x) => x.id === id); return p ? (p.label || id) : id; };
 const actLabel = (k) => { for (const r of (O1() || {roads: []}).roads) { const a = r.activities.find((x) => x.key === k); if (a) return a.label; } return k; };
 const kindOf = (r) => r.kind || "other";
 function paidSpans(list, end) {             // join, then cut inward to whole 50 m stations (rounded down)
@@ -291,8 +298,9 @@ function fillActs() {
   const pc = $("#p_pt").value;
   $("#p_pt").innerHTML = rd && rd.points.length ? rd.points.map((p) => {
     const st = ptState(rd.name, p.id);
-    return `<option value="${esc(p.id)}">${ch(p.ch)} · ${esc(p.family || "")} ${esc(p.cells || "")}/${esc(p.size || "")} · ${p.len || "?"} m${st.done ? " · COMPLETED" : st.pct ? ` · ${st.pct} %` : ""}</option>`; }).join("")
-    : `<option value="">No culverts or structures in the design</option>`;
+    const what = p.no != null ? esc(p.label) : `${ch(p.ch)} · ${esc(p.family || "")} ${esc(p.cells || "")}/${esc(p.size || "")} · ${p.len || "?"} m`;
+    return `<option value="${esc(p.id)}">${what}${st.done ? " · COMPLETED" : st.pct ? ` · ${st.pct} %` : ""}</option>`; }).join("")
+    : `<option value="">No culverts or structures ${BR() ? "on this road" : "in the design"}</option>`;
   if (rd && rd.points.some((p) => p.id === pc)) $("#p_pt").value = pc;
   onAct(); onPt(); onDr();
 }
@@ -350,15 +358,20 @@ function ptState(road, id) {
 }
 function onPt() {
   const rd = o1road($("#m_road").value); const p = rd && rd.points.find((x) => x.id === $("#p_pt").value);
-  $("#p_hint").textContent = p ? `Design: ${p.family || ""} ${p.cells || ""} cell(s) ${p.size || ""}, ${p.len || "?"} m long, at ${ch(p.ch)}` : "";
+  $("#p_hint").textContent = !p ? "" : p.no != null
+    ? `${p.label}. Each of its bill items is paid pro rata to its design length, on completion; a shorter culvert is paid in proportion.`
+    : `Design: ${p.family || ""} ${p.cells || ""} cell(s) ${p.size || ""}, ${p.len || "?"} m long, at ${ch(p.ch)}`;
   if (p && $("#p_len").value === "") $("#p_len").placeholder = `design ${p.len} m`;
   $("#p_c").style.display = PSTATE === "complete" ? "" : "none"; $("#p_p").style.display = PSTATE === "progress" ? "" : "none";
 }
 function setMode(m) {
-  MODE = O1() ? (m === "act" ? "fo" : m) : "other";
-  $("#m_mode").style.display = O1() ? "" : "none";
+  MODE = O1() ? (m === "act" ? "fo" : m) : BR() ? (m === "pt" ? "pt" : "other") : "other";
+  $("#m_mode").style.display = O1() || BR() ? "" : "none";
   $("#m_mode").querySelectorAll("button").forEach((b) => { b.classList.toggle("on", b.dataset.v === MODE);
-    if (b.dataset.v === "other") b.style.display = PK && PK.items.length ? "" : "none"; });
+    if (b.dataset.v === "other") { b.style.display = PK && PK.items.length ? "" : "none"; b.textContent = BR() ? "BOQ items" : "Other"; }
+    else if (b.dataset.v !== "pt") b.style.display = BR() ? "none" : ""; });
+  $("#p_lab").textContent = BR() ? "Culvert or structure (by its number on the road)" : "Culvert or structure (from the design)";
+  $("#pt_lab").textContent = BR() ? "Location No. (as numbered on the road)" : "Chainage (m)";
   $("#w_act").style.display = "none"; $("#w_dr").style.display = TAB[MODE] ? "" : "none";
   if (TAB[MODE]) { $("#d_note").textContent = TAB_NOTE[MODE]; fillActs(); } $("#w_pt").style.display = MODE === "pt" ? "" : "none";
   $("#w_other").style.display = MODE === "other" ? "" : "none";
@@ -417,13 +430,13 @@ function drawForm() {
   if (!PK) return;
   fillItems("");
   $("#m_road").innerHTML = PK.roads.map((r) => `<option>${esc(r.name)}</option>`).join("");
-  setMode(O1() ? MODE : "other");
+  setMode(O1() || BR() ? MODE : "other");
   const last = localStorage.getItem("bm_last"); if (last) { try { const l = JSON.parse(last); $("#m_item").value = l.code; $("#m_road").value = l.road; $("#m_from").value = l.to; } catch (e) {} }
   if (!$("#m_date").value) $("#m_date").value = today();
   $("#m_by").value = localStorage.getItem("bm_by") || "";
-  onItem(); if (O1()) fillActs();
+  onItem(); if (O1() || BR()) fillActs();
 }
-$("#m_road").onchange = () => { if (O1()) fillActs(); };
+$("#m_road").onchange = () => { if (O1() || BR()) fillActs(); };
 function fillItems(q) {
   q = (q || "").toLowerCase().trim();
   const cur = $("#m_item").value;
@@ -512,7 +525,7 @@ $("#m_save").onclick = async () => {
     const rec = {...base, kind: "point", point: $("#p_pt").value, state: PSTATE,
       len: PSTATE === "complete" && $("#p_len").value !== "" ? +$("#p_len").value : null,
       pct: PSTATE === "progress" ? +$("#p_pct").value : 100};
-    if (await saveCommon(rec, checkPt(rec), `Saved: ${esc(rec.point)} ${rec.state === "complete" ? "completed" : rec.pct + " % constructed"}`)) {
+    if (await saveCommon(rec, checkPt(rec), `Saved: ${esc(ptName(rec.road, rec.point))} ${rec.state === "complete" ? "completed" : rec.pct + " % constructed"}`)) {
       $("#p_len").value = ""; $("#p_pct").value = ""; fillActs(); }
     return;
   }
@@ -535,7 +548,7 @@ $("#m_save").onclick = async () => {
   pending = []; gps = null; $("#m_thumbs").innerHTML = ""; $("#m_gpsv").textContent = ""; $("#m_note").value = "";
   $("#m_ovr").checked = false; $("#ovr").style.display = "none"; $("#m_oq").value = ""; $("#m_or").value = "";
   if (!pt) { $("#m_from").value = rec.to; $("#m_to").value = ""; }
-  msg("#m_msg", "ok", `Saved: ${rec.code} ${pt ? "at " + ch(rec.from) : ch(rec.from) + " to " + ch(rec.to) + " " + rec.side} on ${rec.road} — ${fmt(rec.qty)} ${rec.unit}` + (warns.length ? "<br>" + warns.join("<br>") : ""));
+  msg("#m_msg", "ok", `Saved: ${rec.code} ${pt ? (BR() ? "at No. " + rec.from : "at " + ch(rec.from)) : ch(rec.from) + " to " + ch(rec.to) + " " + rec.side} on ${rec.road} — ${fmt(rec.qty)} ${rec.unit}` + (warns.length ? "<br>" + warns.join("<br>") : ""));
   onItem();
 };
 function msg(el, kind, html) { $(el).innerHTML = `<div class="msg ${kind}">${html}</div>`; }
@@ -550,7 +563,7 @@ function drawRecords() {
   $("#r_road").innerHTML = `<option value="">All roads</option>` + PK.roads.map((r) => `<option ${r.name === rd ? "selected" : ""}>${esc(r.name)}</option>`).join("");
   const list = RECS.filter((r) => (!f || keyOf(r) === f) && (!rd || r.road === rd)).sort((a, b) => b.date.localeCompare(a.date) || b.saved.localeCompare(a.saved));
   const body = (r) => kindOf(r) === "act" ? `<div>${esc(r.road)} · ${ch(r.from)} to ${ch(r.to)}</div>`
-    : `<div>${esc(r.road)} · ${esc(r.point)} · <b>${r.state === "complete" ? "completed" + (r.len ? ", " + fmt(r.len, 2) + " m built" : "") : r.pct + " % constructed"}</b></div>`;
+    : `<div>${esc(r.road)} · ${esc(ptName(r.road, r.point))} · <b>${r.state === "complete" ? "completed" + (r.len ? ", " + fmt(r.len, 2) + " m built" : "") : r.pct + " % constructed"}</b></div>`;
   $("#r_list").innerHTML = list.length ? list.map((r) => kindOf(r) !== "other" ? `<div class="card"><b>${esc(keyOf(r))}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
     ${body(r)}<div class="muted">${r.date} · ${esc(r.by)}${r.note ? " · " + esc(r.note) : ""}${r.photos.length ? " · " + r.photos.length + " photo(s)" : ""}</div>
     ${r.exported ? "" : `<button class="btn sec" style="margin-top:6px;padding:5px 10px" data-del="${r.id}">Delete</button>`}</div>` : `<div class="card"><b>${esc(r.code)}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
@@ -623,6 +636,7 @@ $("#x_all").onclick = () => doExport(true);
 function drawSetup() {
   $("#p_info").innerHTML = PK ? `<b>${esc(PK.name)}</b><br>${PK.roads.length} road(s), ` +
     (O1() ? `${O1().roads.reduce((t, r) => t + r.activities.length, 0)} activities and ${O1().roads.reduce((t, r) => t + r.points.length, 0)} culverts/structures from the design, ${PK.items.length} Other items<br>`
+      : BR() ? `${PK.items.length} BOQ items measured by dimensions, ${BR().roads.reduce((t, r) => t + r.points.length, 0)} numbered culverts and structures (paid pro rata); haulage is paid in the office<br>`
       : `${PK.items.length} items, ${PK.culverts.length} culverts and structures<br>`) + `
     Programme ${PK.start} to ${PK.finish}<br>${RECS.length} records on the phone` : "No project loaded.";
 }
