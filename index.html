@@ -36,6 +36,7 @@ input,select,textarea{width:100%;font:inherit;padding:9px 10px;border:1px solid 
 .bar{height:6px;border-radius:3px;background:var(--panel);overflow:hidden;margin-top:4px}.bar i{display:block;height:100%;background:var(--navy)}
 .bar.over i{background:#e34948}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+#m_mode button{font-size:13px;padding:9px 2px}
 .seg{display:flex;border:1px solid #cfcec8;border-radius:8px;overflow:hidden}.seg button{flex:1;border:0;background:#fff;padding:9px;font:inherit}.seg button.on{background:var(--navy);color:#fff}
 small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
 </style>
@@ -51,7 +52,7 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
     <div class="row"><div><label>Date</label><input id="m_date" type="date"></div>
       <div><label>Measured by</label><input id="m_by" placeholder="Quantity Surveyor"></div></div>
     <label>Road</label><select id="m_road"></select>
-    <div class="seg" id="m_mode" style="margin-top:12px"><button data-v="act" class="on">Work done</button><button data-v="pt">Culverts</button><button data-v="other">Other items</button></div>
+    <div class="seg" id="m_mode" style="margin-top:12px"><button data-v="fo" class="on">Formation</button><button data-v="pa">Pavement</button><button data-v="dr">Drains</button><button data-v="pt">Culverts</button><button data-v="other">Other</button></div>
     <!-- Option 1: work done, measured by the Estimator engines in the office -->
     <div id="w_act">
       <label>Activity</label><select id="a_act"></select>
@@ -61,6 +62,15 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
       <div class="card"><div class="muted">Paid for this activity after this record (whole 50 m stations, rounded down)</div>
         <div class="qty" id="a_paid">—</div><div class="muted" id="a_calc"></div></div>
       <div class="muted">Widths, thicknesses, drain types and haul distances come from the design. The office's Estimator engines work out every item (materials, concrete, haulage) from what you record.</div>
+    </div>
+    <div id="w_dr" style="display:none">
+      <label id="d_lab">Item (from the design: type, size, side and stretch)</label><select id="d_dr"></select>
+      <div id="d_hint" class="muted"></div>
+      <div class="row"><div><label>From (m)</label><input id="d_from" type="number" inputmode="decimal" step="any"></div>
+        <div><label>To (m)</label><input id="d_to" type="number" inputmode="decimal" step="any"></div></div>
+      <div class="card"><div class="muted">Paid for this item after this record (whole 50 m stations, rounded down)</div>
+        <div class="qty" id="d_paid">—</div><div class="muted" id="d_calc"></div></div>
+      <div class="muted" id="d_note"></div>
     </div>
     <div id="w_pt" style="display:none">
       <label>Culvert or structure (from the design)</label><select id="p_pt"></select>
@@ -164,7 +174,12 @@ const fmt = (v, d = 2) => (v == null || isNaN(v) ? "—" : Number(v).toLocaleStr
 const ch = (m) => { m = Math.round(m || 0); return `${Math.floor(m / 1000)}+${String(m % 1000).padStart(3, "0")}`; };
 const today = () => new Date().toISOString().slice(0, 10);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-let PK = null, DIMS = {}, RECS = [], side = "B/S", pending = [], gps = null, MODE = "act", PSTATE = "complete";
+let PK = null, DIMS = {}, RECS = [], side = "B/S", pending = [], gps = null, MODE = "fo", PSTATE = "complete";
+const TAB = {fo: "formation", pa: "pavement", dr: "drains"};
+const TAB_NOTE = {
+  fo: "Clearing class, formation treatment, fill heights and widening come from the design. Different work is paid only under an approved variation BOQ.",
+  pa: "Thicknesses, widths and spray rates come from the design. A layer cannot be recorded ahead of the layer below it.",
+  dr: "The size is the design's. A drain built to another size is paid only under a signed variation order."};
 
 /* ---------- how an item is measured ---------- */
 function unitKind(u) {
@@ -266,15 +281,50 @@ function covers(sp, a, b) { let x = a; for (const [p, q] of sp) { if (p > x) bre
 function actRecs(road, act, exceptId) { return RECS.filter((r) => kindOf(r) === "act" && r.road === road && r.act === act && r.id !== exceptId); }
 function fillActs() {
   const rd = o1road($("#m_road").value); const cur = $("#a_act").value;
-  $("#a_act").innerHTML = rd ? rd.activities.map((a) => `<option value="${a.key}">${esc(a.label)}</option>`).join("") : "";
-  if (rd && rd.activities.some((a) => a.key === cur)) $("#a_act").value = cur;
+  $("#a_act").innerHTML = rd ? rd.activities.filter((a) => !isDrainAct(a.key)).map((a) => `<option value="${a.key}">${esc(a.label)}</option>`).join("") : "";
+  if (rd && rd.activities.some((a) => a.key === cur && !isDrainAct(cur))) $("#a_act").value = cur;
+  const dc = $("#d_dr").value, drs = ((rd && rd.stretches) || []).filter((d) => d.tab === TAB[MODE]), types = [...new Set(drs.map((d) => d.type))];
+  $("#d_dr").innerHTML = drs.length ? types.map((t) => `<optgroup label="${esc(t)}">` + drs.filter((d) => d.type === t).map((d) =>
+    `<option value="${esc(d.id)}">${esc(d.label)} · ${ch(d.from)}–${ch(d.to)}</option>`).join("") + "</optgroup>").join("")
+    : `<option value="">None in the design</option>`;
+  if (drs.some((d) => d.id === dc)) $("#d_dr").value = dc;
   const pc = $("#p_pt").value;
   $("#p_pt").innerHTML = rd && rd.points.length ? rd.points.map((p) => {
     const st = ptState(rd.name, p.id);
     return `<option value="${esc(p.id)}">${ch(p.ch)} · ${esc(p.family || "")} ${esc(p.cells || "")}/${esc(p.size || "")} · ${p.len || "?"} m${st.done ? " · COMPLETED" : st.pct ? ` · ${st.pct} %` : ""}</option>`; }).join("")
     : `<option value="">No culverts or structures in the design</option>`;
   if (rd && rd.points.some((p) => p.id === pc)) $("#p_pt").value = pc;
-  onAct(); onPt();
+  onAct(); onPt(); onDr();
+}
+const DRAIN_ACTS = ["UDRAIN_L", "UDRAIN_R", "TRAP_L", "TRAP_R", "DITCH_L", "DITCH_R", "KERB_L", "KERB_R", "SCOUR"];
+const isDrainAct = (k) => DRAIN_ACTS.includes(k);
+const drainOf = (road, id) => { const rd = o1road(road); return rd && (rd.stretches || []).find((d) => d.id === id); };
+function onDr() {
+  const rd = o1road($("#m_road").value), d = rd && drainOf(rd.name, $("#d_dr").value);
+  if (!d) { $("#d_hint").textContent = ""; return; }
+  const sp = paidSpans(actRecs(rd.name, d.act), rd.end).map(([a, b]) => [Math.max(a, d.from), Math.min(b, d.to)]).filter(([a, b]) => b > a);
+  $("#d_hint").innerHTML = `${esc(d.label)}<br>Design stretch ${ch(d.from)}–${ch(d.to)} (${fmt(d.to - d.from, 0)} m) · paid so far ${spanTxt(sp)} (${fmt(spanLen(sp), 0)} m)`;
+  recalcDr();
+}
+function recalcDr() {
+  const rd = o1road($("#m_road").value), d = rd && drainOf(rd.name, $("#d_dr").value); if (!d) return;
+  const a = +$("#d_from").value, b = +$("#d_to").value;
+  if (!($("#d_to").value !== "" && b > a)) { $("#d_paid").textContent = "—"; $("#d_calc").textContent = ""; return; }
+  const before = paidSpans(actRecs(rd.name, d.act), rd.end), after = paidSpans(actRecs(rd.name, d.act).concat([{from: a, to: b}]), rd.end);
+  const inD = (sp) => sp.reduce((t, [p, q]) => t + Math.max(0, Math.min(q, d.to) - Math.max(p, d.from)), 0);
+  const add = inD(after) - inD(before);
+  $("#d_paid").textContent = `${fmt(inD(after), 0)} m of ${fmt(d.to - d.from, 0)} m`;
+  $("#d_calc").textContent = `this record adds ${fmt(add, 0)} m` + (add < b - a ? ` — ${fmt(b - a - add, 0)} m waits until its 50 m station is complete` : "");
+}
+$("#d_dr").onchange = () => { $("#d_from").value = ""; $("#d_to").value = ""; onDr(); };
+["d_from", "d_to"].forEach((k) => ($("#" + k).oninput = recalcDr));
+function checkDr(rec) {
+  const d = drainOf(rec.road, rec.stretch);
+  if (!d) return {errs: ["Choose the item from the design list."], warns: []};
+  const out = checkAct(rec);
+  if (rec.from < d.from - 0.5 || rec.to > d.to + 0.5)
+    out.errs.unshift(`Outside this item's design stretch (${ch(d.from)}–${ch(d.to)}). Different work or size here is paid only under a signed variation order.`);
+  return out;
 }
 function onAct() {
   const rd = o1road($("#m_road").value), k = $("#a_act").value; if (!rd || !k) return;
@@ -305,11 +355,12 @@ function onPt() {
   $("#p_c").style.display = PSTATE === "complete" ? "" : "none"; $("#p_p").style.display = PSTATE === "progress" ? "" : "none";
 }
 function setMode(m) {
-  MODE = O1() ? m : "other";
+  MODE = O1() ? (m === "act" ? "fo" : m) : "other";
   $("#m_mode").style.display = O1() ? "" : "none";
   $("#m_mode").querySelectorAll("button").forEach((b) => { b.classList.toggle("on", b.dataset.v === MODE);
     if (b.dataset.v === "other") b.style.display = PK && PK.items.length ? "" : "none"; });
-  $("#w_act").style.display = MODE === "act" ? "" : "none"; $("#w_pt").style.display = MODE === "pt" ? "" : "none";
+  $("#w_act").style.display = "none"; $("#w_dr").style.display = TAB[MODE] ? "" : "none";
+  if (TAB[MODE]) { $("#d_note").textContent = TAB_NOTE[MODE]; fillActs(); } $("#w_pt").style.display = MODE === "pt" ? "" : "none";
   $("#w_other").style.display = MODE === "other" ? "" : "none";
 }
 $("#m_mode").querySelectorAll("button").forEach((b) => (b.onclick = () => setMode(b.dataset.v)));
@@ -448,6 +499,15 @@ $("#m_save").onclick = async () => {
       $("#a_from").value = rec.to; $("#a_to").value = ""; onAct(); }
     return;
   }
+  if (TAB[MODE]) {
+    const d = drainOf($("#m_road").value, $("#d_dr").value);
+    if (!d) { msg("#m_msg", "bad", "Choose the item from the design list."); return; }
+    if ($("#d_from").value === "" || $("#d_to").value === "") { msg("#m_msg", "bad", "Enter From and To."); return; }
+    const rec = {...base, kind: "act", act: d.act, stretch: d.id, size: d.size || "", from: +$("#d_from").value, to: +$("#d_to").value};
+    if (await saveCommon(rec, checkDr(rec), `Saved: ${esc(d.label)} ${ch(rec.from)} to ${ch(rec.to)}`)) {
+      $("#d_from").value = rec.to < d.to ? rec.to : ""; $("#d_to").value = ""; onDr(); }
+    return;
+  }
   if (MODE === "pt") {
     const rec = {...base, kind: "point", point: $("#p_pt").value, state: PSTATE,
       len: PSTATE === "complete" && $("#p_len").value !== "" ? +$("#p_len").value : null,
@@ -482,7 +542,8 @@ function msg(el, kind, html) { $(el).innerHTML = `<div class="msg ${kind}">${htm
 
 function drawRecords() {
   if (!PK) { $("#r_list").innerHTML = '<div class="msg warn">No project loaded.</div>'; return; }
-  const keyOf = (r) => kindOf(r) === "act" ? actLabel(r.act) : kindOf(r) === "point" ? "Culverts and structures" : r.code;
+  const stOf = (r) => drainOf(r.road, r.stretch || r.drain);
+  const keyOf = (r) => kindOf(r) === "act" ? (stOf(r) ? stOf(r).label : actLabel(r.act) + (r.size ? " " + r.size : "")) : kindOf(r) === "point" ? "Culverts and structures" : r.code;
   const codes = [...new Set(RECS.map(keyOf))];
   const f = $("#r_filter").value, rd = $("#r_road").value;
   $("#r_filter").innerHTML = `<option value="">All items</option>` + codes.map((c) => `<option ${c === f ? "selected" : ""}>${esc(c)}</option>`).join("");

@@ -31,32 +31,38 @@ The pack carries the roads with their lengths, the BOQ items with their units an
 
 The pack carries the design of each road: the **activities** with the stretches where the design has them, the **culverts and structures** with their size and design length, and any **Other items**. Other items are bill items that the engines do not produce, and they are measured by dimensions as in 3b.
 
-| Activity | Recorded as |
-|---|---|
-| Site clearance, formation (blading, reshaping or scarifying), cut or fill to widen, raise road | From – To |
-| Side ditch, U-drain, trapezoidal drain, kerb, retaining wall (left and right separately), scour checks | From – To |
-| Sub-base, base, prime, first seal, second seal | From – To |
-| Road furniture and markings (signs, studs, lines, ramps) | From – To, after the seal |
-| Culvert or structure | Completed (as-built length), or in progress (% constructed) |
+The **Measure** tab has five parts. In the first three, the QS picks a line from the design list; each line is one design stretch with its type, value, side and chainages.
+
+| Part | The design list holds | Recorded as |
+|---|---|---|
+| **Formation** | Clearing (by vegetation class), Blading, Reshaping, Scarifying, Raise road (fill height), Cut to widen and Fill to widen (height and width), Retaining walls | From – To inside the stretch |
+| **Pavement** | Sub-base and base (thickness), Prime coat, First seal, Second seal, Road furniture and markings | From – To inside the stretch |
+| **Drains** | U-drains by size (e.g. *U-4, 600 × 900 mm, item K492.7, left*), trapezoidal drains, side ditches, kerbs, scour checks | From – To inside the stretch |
+| **Culverts** | Each design culvert or structure | Completed (as-built length), or in progress (% constructed) |
+| **Other** | Bill items the engines do not produce (shown only when there are any) | By dimensions, as in 3b |
+
+Cut and fill to widen appear only where the design has them. Any other work needs a variation BOQ.
 
 Widths, thicknesses, drain types, vegetation class and haul distances come **from the design**. The phone cannot change them. Work that differs from the design is paid only under an approved variation BOQ.
 
 ## 4. Estimator bills: record the work (Measure)
 
 1. Check the **date**, **Measured by** and the **road**.
-2. **Work done**: choose the activity. The app shows where the design has it and what is paid so far. Enter **From** and **To**.
-   The card shows what will be paid for that activity after the record. Payment is in **whole 50 m stations, rounded down**: records of the same activity are first joined, then each stretch is cut back to whole stations. A part station is paid once it is complete. For example, 0+000–0+275 pays 0+000–0+250. The next record, 0+275–0+620, makes the stretch 0+000–0+600.
-3. **Culverts**: choose the culvert from the design list.
+2. **Formation**, **Pavement** or **Drains**: pick the line from the design list, for example *Raise road (fill 45 cm) · 5+850–5+900* or *U-drain U-4 (600 × 900 mm, item K492.7), left · 7+500–8+300*. The hint shows the design stretch and what is paid so far. Enter **From** and **To** inside that stretch.
+   The card shows what will be paid after the record. Payment is in **whole 50 m stations, rounded down**: records of the same item are joined, then each stretch is cut back to whole stations. A part station is paid once it is complete. For example, 0+000–0+275 pays 0+000–0+250, and the next record, 0+275–0+620, makes it 0+000–0+600.
+   A record outside its design stretch is refused, because different work or a different size there is paid only under a signed variation order.
+4. **Culverts**: choose the culvert from the design list.
    - **Completed** with the as-built length. It is paid up to the design length; a longer culvert needs the Engineer's approval and a variation order for the excess.
    - **In progress** with the percentage constructed. This is for the progress report only; a culvert is paid on completion.
-4. **Other items** (only when the pack has some): measured by dimensions as in 4b.
-5. Add notes, photos and a GPS stamp, then **Save**.
+5. **Other items** (only when the pack has some): measured by dimensions as in 4b.
+6. Add notes, photos and a GPS stamp, then **Save**.
 
 ### What the app refuses
 
-- A stretch of the same activity recorded twice.
+- A stretch of the same item recorded twice.
 - An activity where the design has none ("additional work is paid only under an approved variation BOQ").
 - A layer ahead of the layer below it, over the stations it would pay: base before sub-base, prime before base, first seal before prime, second seal or road furniture before the first seal.
+- A record outside its design stretch (different work or size needs a signed variation order).
 - A chainage outside the road, or a culvert recorded completed twice.
 
 It **warns** when part of a record lies outside the design, when a record completes no whole station yet, and when a culvert is longer or shorter than its design.
