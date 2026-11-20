@@ -61,7 +61,7 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
         <div><label>To (m)</label><input id="a_to" type="number" inputmode="decimal" step="any"></div></div>
       <div class="card"><div class="muted">Paid for this activity after this record (whole 50 m stations, rounded down)</div>
         <div class="qty" id="a_paid">—</div><div class="muted" id="a_calc"></div></div>
-      <div class="muted">Widths, thicknesses, drain types and haul distances come from the design. The office's Estimator engines work out every item (materials, concrete, haulage) from what you record.</div>
+      <div class="muted">Thicknesses, drain types and haul distances come from the design. The office's Estimator engines work out every item (materials, concrete, haulage) from what you record.</div>
     </div>
     <div id="w_dr" style="display:none">
       <label id="d_lab">Item (from the design: type, size, side and stretch)</label><select id="d_dr"></select>
@@ -70,6 +70,7 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
         <div><label>To (m)</label><input id="d_to" type="number" inputmode="decimal" step="any"></div></div>
       <div class="card"><div class="muted">Paid for this item after this record (whole 50 m stations, rounded down)</div>
         <div class="qty" id="d_paid">—</div><div class="muted" id="d_calc"></div></div>
+      <div id="d_meas"></div>
       <div class="muted" id="d_note"></div>
     </div>
     <div id="w_pt" style="display:none">
@@ -177,8 +178,8 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<"
 let PK = null, DIMS = {}, RECS = [], side = "B/S", pending = [], gps = null, MODE = "fo", PSTATE = "complete";
 const TAB = {fo: "formation", pa: "pavement", dr: "drains"};
 const TAB_NOTE = {
-  fo: "Clearing class, formation treatment, fill heights and widening come from the design. Different work is paid only under an approved variation BOQ.",
-  pa: "Thicknesses, widths and spray rates come from the design. A layer cannot be recorded ahead of the layer below it.",
+  fo: "Clearing class and formation treatment come from the design; you measure the widths and the cut, fill and raise heights. Paid up to the design value unless the Engineer instructed more. Different work is paid only under an approved variation BOQ.",
+  pa: "You measure the widths; thicknesses and spray rates come from the design. Paid up to the design width unless the Engineer instructed more. A layer cannot be recorded ahead of the layer below it.",
   dr: "The size is the design's. A drain built to another size is paid only under a signed variation order."};
 
 /* ---------- how an item is measured ---------- */
@@ -312,7 +313,29 @@ function onDr() {
   if (!d) { $("#d_hint").textContent = ""; return; }
   const sp = paidSpans(actRecs(rd.name, d.act), rd.end).map(([a, b]) => [Math.max(a, d.from), Math.min(b, d.to)]).filter(([a, b]) => b > a);
   $("#d_hint").innerHTML = `${esc(d.label)}<br>Design stretch ${ch(d.from)}–${ch(d.to)} (${fmt(d.to - d.from, 0)} m) · paid so far ${spanTxt(sp)} (${fmt(spanLen(sp), 0)} m)`;
+  drawMeas(d);
   recalcDr();
+}
+// Ruling 20 Nov 2026: the QS measures heights and widths; the design value is offered to accept or edit.
+function drawMeas(d) {
+  const f = (d && d.meas_fields) || [];
+  $("#d_meas").innerHTML = f.length ? `<div class="card"><div class="muted">Measured on site (the design value is filled in: keep it or enter what you measured)</div>
+    <div class="row">${f.map(([k, lab, u]) => `<div><label>${esc(lab)} (${esc(u)})</label><input data-mf="${k}" type="number" inputmode="decimal" step="any" value="${d.meas[k]}"><div class="muted">design ${fmt(d.meas[k], 2)} ${esc(u)}</div></div>`).join("")}</div>
+    <label>Engineer's instruction (only to pay more than the design)</label><input id="d_instr" placeholder="e.g. EI 04 of 12 Feb 2027">
+    <div class="muted" id="d_mwarn"></div></div>` : "";
+  $("#d_meas").querySelectorAll("input").forEach((x) => (x.oninput = () => measWarn(d)));
+}
+function measOf(d) {
+  const m = {};
+  $("#d_meas").querySelectorAll("[data-mf]").forEach((x) => { if (x.value !== "") m[x.dataset.mf] = +x.value; });
+  return m;
+}
+const lc1 = (t) => t.charAt(0).toLowerCase() + t.slice(1);
+function overDesign(d, m) { return ((d && d.meas_fields) || []).filter(([k]) => m[k] != null && m[k] > d.meas[k] + 1e-9); }
+function measWarn(d) {
+  const over = overDesign(d, measOf(d)), instr = ($("#d_instr") || {}).value || "";
+  $("#d_mwarn").innerHTML = over.length ? (instr.trim() ? `Over the design, paid as measured under ${esc(instr.trim())}.`
+    : `<b>Over the design</b> (${over.map(([k, lab]) => esc(lc1(lab))).join(", ")}): paid at the design value unless you enter the Engineer's instruction.`) : "";
 }
 function recalcDr() {
   const rd = o1road($("#m_road").value), d = rd && drainOf(rd.name, $("#d_dr").value); if (!d) return;
@@ -332,6 +355,12 @@ function checkDr(rec) {
   const out = checkAct(rec);
   if (rec.from < d.from - 0.5 || rec.to > d.to + 0.5)
     out.errs.unshift(`Outside this item's design stretch (${ch(d.from)}–${ch(d.to)}). Different work or size here is paid only under a signed variation order.`);
+  for (const [k, lab, u] of d.meas_fields || []) {
+    const v = (rec.meas || {})[k];
+    if (v == null || !(v > 0)) out.errs.push(`Enter the measured ${lc1(lab)} (${u}), or keep the design value.`);
+  }
+  const over = overDesign(d, rec.meas || {});
+  if (over.length && !rec.instr) out.warns.push(`Measured more than the design (${over.map(([k, lab]) => lc1(lab)).join(", ")}): it will be paid at the design value, as no Engineer's instruction is entered.`);
   return out;
 }
 function onAct() {
@@ -517,6 +546,11 @@ $("#m_save").onclick = async () => {
     if (!d) { msg("#m_msg", "bad", "Choose the item from the design list."); return; }
     if ($("#d_from").value === "" || $("#d_to").value === "") { msg("#m_msg", "bad", "Enter From and To."); return; }
     const rec = {...base, kind: "act", act: d.act, stretch: d.id, size: d.size || "", from: +$("#d_from").value, to: +$("#d_to").value};
+    if ((d.meas_fields || []).length) {
+      rec.meas = measOf(d);
+      const ins = $("#d_instr").value.trim();
+      if (ins) rec.instr = ins;
+    }
     if (await saveCommon(rec, checkDr(rec), `Saved: ${esc(d.label)} ${ch(rec.from)} to ${ch(rec.to)}`)) {
       $("#d_from").value = rec.to < d.to ? rec.to : ""; $("#d_to").value = ""; onDr(); }
     return;
@@ -562,7 +596,10 @@ function drawRecords() {
   $("#r_filter").innerHTML = `<option value="">All items</option>` + codes.map((c) => `<option ${c === f ? "selected" : ""}>${esc(c)}</option>`).join("");
   $("#r_road").innerHTML = `<option value="">All roads</option>` + PK.roads.map((r) => `<option ${r.name === rd ? "selected" : ""}>${esc(r.name)}</option>`).join("");
   const list = RECS.filter((r) => (!f || keyOf(r) === f) && (!rd || r.road === rd)).sort((a, b) => b.date.localeCompare(a.date) || b.saved.localeCompare(a.saved));
-  const body = (r) => kindOf(r) === "act" ? `<div>${esc(r.road)} · ${ch(r.from)} to ${ch(r.to)}</div>`
+  const mtxt = (r) => { const d = stOf(r), f = (d && d.meas_fields) || [];
+    const t = f.filter(([k]) => r.meas && r.meas[k] != null).map(([k, lab, u]) => `${esc(lc1(lab))} ${fmt(r.meas[k], 2)} ${esc(u)}`).join(", ");
+    return t ? `<div class="muted">Measured: ${t}${r.instr ? " · Engineer's instruction " + esc(r.instr) : ""}</div>` : ""; };
+  const body = (r) => kindOf(r) === "act" ? `<div>${esc(r.road)} · ${ch(r.from)} to ${ch(r.to)}</div>${mtxt(r)}`
     : `<div>${esc(r.road)} · ${esc(ptName(r.road, r.point))} · <b>${r.state === "complete" ? "completed" + (r.len ? ", " + fmt(r.len, 2) + " m built" : "") : r.pct + " % constructed"}</b></div>`;
   $("#r_list").innerHTML = list.length ? list.map((r) => kindOf(r) !== "other" ? `<div class="card"><b>${esc(keyOf(r))}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
     ${body(r)}<div class="muted">${r.date} · ${esc(r.by)}${r.note ? " · " + esc(r.note) : ""}${r.photos.length ? " · " + r.photos.length + " photo(s)" : ""}</div>

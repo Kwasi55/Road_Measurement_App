@@ -43,7 +43,14 @@ The **Measure** tab has five parts. In the first three, the QS picks a line from
 
 Cut and fill to widen appear only where the design has them. Any other work needs a variation BOQ.
 
-Widths, thicknesses, drain types, vegetation class and haul distances come **from the design**. The phone cannot change them. Work that differs from the design is paid only under an approved variation BOQ.
+**Measured values (from 20 Nov 2026).** The contractor is paid on measured work, so on the Formation and Pavement lines you measure:
+- the **cut and fill to widen** height (cm) and width L+R (m);
+- the **raise** height (cm);
+- the **width** of clearing, formation, sub-base, base, prime coat, seals and scarifying (m).
+
+Each line arrives with the design value filled in. Keep it, or enter what you measured. Paid is the lesser of measured and design. If you measured more than the design, the phone warns you: it is paid as measured only when you enter the **Engineer's instruction** reference (for example *EI 04 of 12 Feb 2027*).
+
+Thicknesses, drain types, vegetation class and haul distances still come **from the design**, and the phone cannot change them. Work that differs from the design is paid only under an approved variation BOQ.
 
 ## 4. Estimator bills: record the work (Measure)
 
