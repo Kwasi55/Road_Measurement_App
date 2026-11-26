@@ -39,10 +39,14 @@ input,select,textarea{width:100%;font:inherit;padding:9px 10px;border:1px solid 
 #m_mode button{font-size:13px;padding:9px 2px}
 .seg{display:flex;border:1px solid #cfcec8;border-radius:8px;overflow:hidden}.seg button{flex:1;border:0;background:#fff;padding:9px;font:inherit}.seg button.on{background:var(--navy);color:#fff}
 small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
+h3{font-size:14px;margin:16px 0 4px;color:var(--navy)}
+table.k{width:100%;border-collapse:collapse}table.k td{padding:3px 0}table.k td:first-child{font-size:14px}table.k input,table.k select{width:110px}
+.btn.sm{padding:6px 10px;font-size:13px}
+.role{font-size:11px;background:rgba(255,255,255,.18);padding:1px 7px;border-radius:9px;margin-left:6px}
 </style>
 </head>
 <body>
-<header><div class="t">BESPA MEASUREMENT</div><div class="p" id="hdr">No project loaded</div></header>
+<header><div class="t">BESPA MEASUREMENT <span class="role" id="hdr_role"></span></div><div class="p" id="hdr">No project loaded</div></header>
 <main>
 <!-- ============ MEASURE ============ -->
 <section id="s-measure" class="on">
@@ -108,6 +112,52 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
     <div id="m_msg"></div>
   </div>
 </section>
+<!-- ============ DIARY (Site Supervisor) ============ -->
+<section id="s-diary">
+  <h2>Site diary</h2>
+  <div id="sd_none" class="msg warn">Load the site pack first (Setup).</div>
+  <div id="sd_form">
+  <label>Date</label><input type="date" id="sd_date">
+  <h3>Weather</h3>
+  <div class="row"><div><label>Morning</label><select id="sd_am"></select></div><div><label>Afternoon</label><select id="sd_pm"></select></div></div>
+  <div class="row"><div><label>Rain (mm)</label><input id="sd_rain" type="number" step="0.1" min="0" inputmode="decimal"></div><div><label>Hours lost to weather</label><input id="sd_lost" type="number" step="0.5" min="0" inputmode="decimal"></div></div>
+  <button class="btn sec wide" id="sd_wx">Fetch the weather (needs signal and GPS)</button><div class="muted" id="sd_wxv"></div>
+  <h3>Labour on site</h3><table class="k" id="sd_lab"></table>
+  <h3>Plant</h3><table class="k" id="sd_plant"></table>
+  <h3>Materials delivered</h3><div id="sd_del"></div><button class="btn sec sm" id="sd_addel" style="margin-top:6px">Add a delivery</button>
+  <h3>Work done today</h3><div class="muted">Activities due around this date in the programme. Add the chainages worked.</div><div id="sd_work"></div>
+  <button class="btn sec sm" id="sd_addwk" style="margin-top:6px">Add work done</button>
+  <h3>Instructions received</h3><textarea id="sd_instr" rows="2"></textarea>
+  <h3>Delays</h3><textarea id="sd_delay" rows="2"></textarea>
+  <h3>Incidents (safety, damage)</h3><textarea id="sd_inc" rows="2"></textarea>
+  <h3>Visitors</h3><textarea id="sd_vis" rows="2"></textarea>
+  <label>Photos</label><input type="file" id="sd_photo" accept="image/*" capture="environment" multiple><div class="thumbs" id="sd_thumbs"></div>
+  <div id="sd_msg"></div>
+  <button class="btn wide" id="sd_save">Save the day</button>
+  </div>
+</section>
+<!-- ============ INSPECT (Site Supervisor) ============ -->
+<section id="s-inspect">
+  <h2>Inspections at hold points</h2>
+  <div id="n_none" class="msg warn">Load the site pack first (Setup).</div>
+  <div id="n_form">
+  <div class="muted">Work at a hold point is paid only after a passed inspection, accepted by the Engineer's Deputy. Laboratory tests stay with the Laboratory.</div>
+  <div class="seg" id="n_mode" style="margin-top:10px"><button data-v="road" class="on">Road and drains</button><button data-v="culv">Culverts</button></div>
+  <label>Date</label><input type="date" id="n_date">
+  <div id="n_road_w"><label>Road</label><select id="n_road"></select>
+    <label>Hold point</label><select id="n_hold"></select>
+    <div class="row"><div><label>From (m)</label><input id="n_from" type="number" inputmode="decimal" step="any"></div>
+      <div><label>To (m)</label><input id="n_to" type="number" inputmode="decimal" step="any"></div></div></div>
+  <div id="n_culv_w" style="display:none"><label>Culvert</label><select id="n_pt"></select>
+    <label>Stage</label><select id="n_stage"></select></div>
+  <label>Result</label><div class="seg" id="n_res"><button data-v="pass" class="on">Pass</button><button data-v="fail">Fail</button></div>
+  <label>Note (what was checked; what failed)</label><textarea id="n_note" rows="2"></textarea>
+  <label>Photos</label><input type="file" id="n_photo" accept="image/*" capture="environment" multiple><div class="thumbs" id="n_thumbs"></div>
+  <div class="row" style="margin-top:12px"><button class="btn sec" id="n_gps">Stamp GPS</button><button class="btn" id="n_save">Save</button></div>
+  <div id="n_gpsv" class="muted"></div>
+  <div id="n_msg"></div>
+  </div>
+</section>
 <!-- ============ RECORDS ============ -->
 <section id="s-records">
   <h2>Records</h2>
@@ -138,13 +188,17 @@ small.code{font-family:ui-monospace,Consolas,monospace;color:var(--ink2)}
   <label>Load the site pack (from the Progress and Valuation app)</label>
   <input id="p_file" type="file" accept=".json,application/json">
   <div id="p_msg"></div>
+  <h3>Who uses this phone</h3>
+  <div class="row"><div><label>Role</label><select id="p_role"><option>Quantity Surveyor</option><option>Site Supervisor</option></select></div>
+    <div><label>Name</label><input id="p_name" placeholder="Your name"></div></div>
+  <div class="muted">The Quantity Surveyor measures work for payment. The Site Supervisor keeps the daily site diary and inspects the hold points.</div>
   <div class="card muted">The site pack holds the roads, the BOQ items with their units and quantities, and the culverts. It holds no rates. Loading a newer pack of the same project keeps your records and dimensions.</div>
   <button class="btn sec wide" id="p_reset">Remove this project from the phone</button>
 </section>
 </main>
 <nav>
-  <button data-s="measure" class="on">Measure</button><button data-s="records">Records</button>
-  <button data-s="items">Items</button><button data-s="export">Export</button><button data-s="setup">Setup</button>
+  <button data-s="measure" class="on" data-for="Quantity Surveyor">Measure</button><button data-s="diary" data-for="Site Supervisor">Diary</button><button data-s="inspect" data-for="Site Supervisor">Inspect</button><button data-s="records">Records</button>
+  <button data-s="items" data-for="Quantity Surveyor">Items</button><button data-s="export">Export</button><button data-s="setup">Setup</button>
 </nav>
 <script>
 "use strict";
@@ -450,6 +504,7 @@ function tab(s) {
   document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.s === s));
   document.querySelectorAll("section").forEach((x) => x.classList.toggle("on", x.id === "s-" + s));
   if (s === "records") drawRecords(); if (s === "items") drawItems(); if (s === "export") drawExport(); if (s === "setup") drawSetup();
+  if (s === "diary") drawDiary(); if (s === "inspect") drawInsp();
 }
 document.querySelectorAll("nav button").forEach((b) => (b.onclick = () => tab(b.dataset.s)));
 
@@ -590,18 +645,18 @@ function msg(el, kind, html) { $(el).innerHTML = `<div class="msg ${kind}">${htm
 function drawRecords() {
   if (!PK) { $("#r_list").innerHTML = '<div class="msg warn">No project loaded.</div>'; return; }
   const stOf = (r) => drainOf(r.road, r.stretch || r.drain);
-  const keyOf = (r) => kindOf(r) === "act" ? (stOf(r) ? stOf(r).label : actLabel(r.act) + (r.size ? " " + r.size : "")) : kindOf(r) === "point" ? "Culverts and structures" : r.code;
+  const keyOf = (r) => kindOf(r) === "diary" ? "Site diary" : kindOf(r) === "inspection" ? "Inspections" : kindOf(r) === "act" ? (stOf(r) ? stOf(r).label : actLabel(r.act) + (r.size ? " " + r.size : "")) : kindOf(r) === "point" ? "Culverts and structures" : r.code;
   const codes = [...new Set(RECS.map(keyOf))];
   const f = $("#r_filter").value, rd = $("#r_road").value;
   $("#r_filter").innerHTML = `<option value="">All items</option>` + codes.map((c) => `<option ${c === f ? "selected" : ""}>${esc(c)}</option>`).join("");
   $("#r_road").innerHTML = `<option value="">All roads</option>` + PK.roads.map((r) => `<option ${r.name === rd ? "selected" : ""}>${esc(r.name)}</option>`).join("");
-  const list = RECS.filter((r) => (!f || keyOf(r) === f) && (!rd || r.road === rd)).sort((a, b) => b.date.localeCompare(a.date) || b.saved.localeCompare(a.saved));
+  const list = RECS.filter((r) => (!f || keyOf(r) === f) && (!rd || r.road === rd || kindOf(r) === "diary")).sort((a, b) => b.date.localeCompare(a.date) || b.saved.localeCompare(a.saved));
   const mtxt = (r) => { const d = stOf(r), f = (d && d.meas_fields) || [];
     const t = f.filter(([k]) => r.meas && r.meas[k] != null).map(([k, lab, u]) => `${esc(lc1(lab))} ${fmt(r.meas[k], 2)} ${esc(u)}`).join(", ");
     return t ? `<div class="muted">Measured: ${t}${r.instr ? " · Engineer's instruction " + esc(r.instr) : ""}</div>` : ""; };
   const body = (r) => kindOf(r) === "act" ? `<div>${esc(r.road)} · ${ch(r.from)} to ${ch(r.to)}</div>${mtxt(r)}`
     : `<div>${esc(r.road)} · ${esc(ptName(r.road, r.point))} · <b>${r.state === "complete" ? "completed" + (r.len ? ", " + fmt(r.len, 2) + " m built" : "") : r.pct + " % constructed"}</b></div>`;
-  $("#r_list").innerHTML = list.length ? list.map((r) => kindOf(r) !== "other" ? `<div class="card"><b>${esc(keyOf(r))}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
+  $("#r_list").innerHTML = list.length ? list.map((r) => ["diary", "inspection"].includes(kindOf(r)) ? supCard(r) : kindOf(r) !== "other" ? `<div class="card"><b>${esc(keyOf(r))}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
     ${body(r)}<div class="muted">${r.date} · ${esc(r.by)}${r.note ? " · " + esc(r.note) : ""}${r.photos.length ? " · " + r.photos.length + " photo(s)" : ""}</div>
     ${r.exported ? "" : `<button class="btn sec" style="margin-top:6px;padding:5px 10px" data-del="${r.id}">Delete</button>`}</div>` : `<div class="card"><b>${esc(r.code)}</b> <span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>
     <div>${esc(r.road)} · ${r.to > r.from ? ch(r.from) + " to " + ch(r.to) + " " + r.side : "at " + ch(r.from)}</div>
@@ -658,7 +713,7 @@ async function doExport(all) {
   if (!list.length) { msg("#x_msg", "warn", "Nothing to export."); return; }
   const photos = {};
   for (const r of list) for (const p of r.photos) photos[p] = await DB.photo(p);
-  const out = {kind: "bespa-measurements", version: O1() ? 2 : 1, project: PK.name, project_key: PK.key, period_end: end, all,
+  const out = {kind: "bespa-measurements", version: O1() ? 2 : 1, role: ROLE(), project: PK.name, project_key: PK.key, period_end: end, all,
     exported: new Date().toISOString(), measured_by: [...new Set(list.map((r) => r.by))], records: list, photos, dims: DIMS};
   const blob = new Blob([JSON.stringify(out)], {type: "application/json"});
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
@@ -671,6 +726,7 @@ $("#x_go").onclick = () => doExport(false);
 $("#x_all").onclick = () => doExport(true);
 
 function drawSetup() {
+  $("#p_role").value = ROLE(); $("#p_name").value = localStorage.getItem("bm_by") || "";
   $("#p_info").innerHTML = PK ? `<b>${esc(PK.name)}</b><br>${PK.roads.length} road(s), ` +
     (O1() ? `${O1().roads.reduce((t, r) => t + r.activities.length, 0)} activities and ${O1().roads.reduce((t, r) => t + r.points.length, 0)} culverts/structures from the design, ${PK.items.length} Other items<br>`
       : BR() ? `${PK.items.length} BOQ items measured by dimensions, ${BR().roads.reduce((t, r) => t + r.points.length, 0)} numbered culverts and structures (paid pro rata); haulage is paid in the office<br>`
@@ -691,9 +747,161 @@ $("#p_file").onchange = async (e) => {
 };
 $("#p_reset").onclick = async () => { if (!confirm("Remove the project and all its records from this phone?")) return; await DB.clear(); PK = null; RECS = []; DIMS = {}; drawForm(); drawSetup(); };
 
+/* ---------- the Site Supervisor (ruling 25 Nov 2026): diary and hold-point inspections ---------- */
+const ROLE = () => localStorage.getItem("bm_role") || "Quantity Surveyor";
+const SUP = () => (PK && PK.supervision) || null;
+const WEATHER = ["Sunny", "Cloudy", "Light rain", "Heavy rain", "Storm"];
+let SPEND = {d: [], n: []}, NMODE = "road", NRES = "pass", DEL = [], WK = [];
+function applyRole() {
+  const r = ROLE();
+  $("#hdr_role").textContent = r;
+  document.querySelectorAll("nav button[data-for]").forEach((b) => (b.style.display = b.dataset.for === r ? "" : "none"));
+  const cur = document.querySelector("nav button.on");
+  if (cur && cur.style.display === "none") tab(r === "Site Supervisor" ? "diary" : "measure");
+}
+$("#p_role").onchange = () => { localStorage.setItem("bm_role", $("#p_role").value); applyRole(); };
+$("#p_name").onchange = () => { localStorage.setItem("bm_by", $("#p_name").value.trim()); if ($("#m_by")) $("#m_by").value = $("#p_name").value.trim(); };
+function stampTo(out, cb) {
+  if (!navigator.geolocation) { $(out).textContent = "No GPS on this device."; return; }
+  $(out).textContent = "Finding the position…";
+  navigator.geolocation.getCurrentPosition((p) => { gps = {lat: +p.coords.latitude.toFixed(6), lon: +p.coords.longitude.toFixed(6), acc: Math.round(p.coords.accuracy)};
+    $(out).textContent = `${gps.lat}, ${gps.lon} (±${gps.acc} m)`; if (cb) cb(gps); },
+    (err) => ($(out).textContent = "No position: " + err.message), {enableHighAccuracy: true, timeout: 20000});
+}
+async function addPhotos(e, list, thumbs) {
+  for (const f of e.target.files) { const d = await shrink(f); list.push(d); $(thumbs).insertAdjacentHTML("beforeend", `<img src="${d}">`); }
+  e.target.value = "";
+}
+$("#sd_photo").onchange = (e) => addPhotos(e, SPEND.d, "#sd_thumbs");
+$("#n_photo").onchange = (e) => addPhotos(e, SPEND.n, "#n_thumbs");
+function who() { const by = localStorage.getItem("bm_by") || ""; return by; }
+
+function diaryOf(d) { return RECS.find((r) => r.kind === "diary" && r.date === d && !r.exported); }
+function drawDiary() {
+  $("#sd_none").style.display = PK ? "none" : ""; $("#sd_form").style.display = PK ? "" : "none";
+  if (!PK) return;
+  if (!$("#sd_date").value) $("#sd_date").value = today();
+  const d = $("#sd_date").value, r = diaryOf(d) || {}, S = SUP() || {labour: [], plant: [], activities: []};
+  const opt = (v) => `<option value="">—</option>` + WEATHER.map((w) => `<option ${w === v ? "selected" : ""}>${w}</option>`).join("");
+  $("#sd_am").innerHTML = opt(r.weather && r.weather.am); $("#sd_pm").innerHTML = opt(r.weather && r.weather.pm);
+  $("#sd_rain").value = r.weather ? r.weather.rain_mm ?? "" : ""; $("#sd_lost").value = r.weather ? r.weather.hours_lost ?? "" : "";
+  $("#sd_lab").innerHTML = S.labour.map((t) => `<tr><td>${esc(t)}</td><td><input type="number" min="0" inputmode="numeric" data-lab="${esc(t)}" value="${(r.labour || {})[t] ?? ""}"></td></tr>`).join("");
+  $("#sd_plant").innerHTML = S.plant.map((t) => { const v = (r.plant || {})[t] || "";
+    return `<tr><td>${esc(t)}</td><td><select data-pl="${esc(t)}"><option value="">not on site</option><option ${v === "working" ? "selected" : ""}>working</option><option ${v === "idle" ? "selected" : ""}>idle</option><option ${v === "broken down" ? "selected" : ""}>broken down</option></select></td></tr>`; }).join("");
+  DEL = (r.deliveries || []).map((x) => ({...x})); drawDel();
+  WK = (r.work || []).map((x) => ({...x})); drawWork();
+  $("#sd_instr").value = r.instructions || ""; $("#sd_delay").value = r.delays || ""; $("#sd_inc").value = r.incidents || ""; $("#sd_vis").value = r.visitors || "";
+  SPEND.d = []; $("#sd_thumbs").innerHTML = ""; $("#sd_msg").innerHTML = r.id ? '<div class="msg warn">This day is already saved on the phone; saving again replaces it.</div>' : "";
+}
+function drawDel() {
+  $("#sd_del").innerHTML = DEL.map((x, i) => `<div class="row" style="margin-top:4px"><input placeholder="Material" value="${esc(x.material)}" data-di="${i}" data-k="material"><input placeholder="Qty" type="number" step="any" inputmode="decimal" value="${x.qty ?? ""}" data-di="${i}" data-k="qty"><input placeholder="Unit" value="${esc(x.unit)}" data-di="${i}" data-k="unit"></div>`).join("");
+  document.querySelectorAll("#sd_del input").forEach((inp) => (inp.oninput = () => { DEL[+inp.dataset.di][inp.dataset.k] = inp.dataset.k === "qty" ? +inp.value : inp.value; }));
+}
+function dueActs(d) {
+  const S = SUP(); if (!S) return [];
+  const x = new Date(d + "T00:00:00"), lo = new Date(x - 7 * 864e5).toISOString().slice(0, 10), hi = new Date(+x + 7 * 864e5).toISOString().slice(0, 10);
+  const due = S.activities.filter((a) => a.start <= hi && a.finish >= lo);
+  return due.length ? due : S.activities;
+}
+function drawWork() {
+  const acts = dueActs($("#sd_date").value || today());
+  $("#sd_work").innerHTML = WK.map((w, i) => `<div class="card"><select data-wi="${i}" data-k="activity">${acts.concat(acts.some((a) => a.id === w.activity) ? [] : (SUP().activities.filter((a) => a.id === w.activity))).map((a) => `<option value="${a.id}" ${a.id === w.activity ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select>
+    <div class="row"><div><label>From (m)</label><input type="number" step="any" inputmode="decimal" data-wi="${i}" data-k="from" value="${w.from ?? ""}"></div><div><label>To (m)</label><input type="number" step="any" inputmode="decimal" data-wi="${i}" data-k="to" value="${w.to ?? ""}"></div></div>
+    <button class="btn sec sm" data-wx="${i}" style="margin-top:6px">Remove</button></div>`).join("") || '<div class="muted">Nothing added yet.</div>';
+  document.querySelectorAll("#sd_work [data-wi]").forEach((el) => (el.onchange = el.oninput = () => { const w = WK[+el.dataset.wi]; w[el.dataset.k] = el.dataset.k === "activity" ? el.value : (el.value === "" ? null : +el.value); }));
+  document.querySelectorAll("#sd_work [data-wx]").forEach((b) => (b.onclick = () => { WK.splice(+b.dataset.wx, 1); drawWork(); }));
+}
+$("#sd_addel").onclick = () => { DEL.push({material: "", qty: null, unit: ""}); drawDel(); };
+$("#sd_addwk").onclick = () => { const a = dueActs($("#sd_date").value || today())[0]; WK.push({activity: a ? a.id : "", from: null, to: null}); drawWork(); };
+$("#sd_date").onchange = drawDiary;
+$("#sd_wx").onclick = () => stampTo("#sd_wxv", async (g) => {
+  try {
+    const d = $("#sd_date").value;
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=${g.lat}&longitude=${g.lon}&daily=precipitation_sum,weather_code&timezone=auto&start_date=${d}&end_date=${d}`;
+    const j = await (await fetch(u)).json(), mm = j.daily.precipitation_sum[0], code = j.daily.weather_code[0];
+    const w = code >= 95 ? "Storm" : code >= 63 ? "Heavy rain" : code >= 51 ? "Light rain" : code >= 2 ? "Cloudy" : "Sunny";
+    $("#sd_rain").value = mm; if (!$("#sd_am").value) $("#sd_am").value = w; if (!$("#sd_pm").value) $("#sd_pm").value = w;
+    $("#sd_wxv").textContent += ` · ${w}, ${mm} mm (Open-Meteo)`;
+  } catch (err) { $("#sd_wxv").textContent += " · no weather service reached: type it in."; }
+});
+$("#sd_save").onclick = async () => {
+  const d = $("#sd_date").value, old = diaryOf(d), S = SUP() || {activities: []};
+  const labour = {}; document.querySelectorAll("[data-lab]").forEach((i) => { if (i.value !== "") labour[i.dataset.lab] = +i.value; });
+  const plant = {}; document.querySelectorAll("[data-pl]").forEach((x) => { if (x.value) plant[x.dataset.pl] = x.value; });
+  const road = PK.roads[0] ? PK.roads[0].name : "";
+  const work = WK.filter((w) => w.activity).map((w) => ({...w, road, name: (S.activities.find((a) => a.id === w.activity) || {}).name || w.activity}));
+  const rec = {id: old ? old.id : "diary-" + d + "-" + newId(), kind: "diary", date: d, by: who(), role: "Site Supervisor", road,
+    weather: {am: $("#sd_am").value, pm: $("#sd_pm").value, rain_mm: $("#sd_rain").value === "" ? null : +$("#sd_rain").value, hours_lost: $("#sd_lost").value === "" ? null : +$("#sd_lost").value},
+    labour, plant, deliveries: DEL.filter((x) => x.material), work,
+    instructions: $("#sd_instr").value.trim(), delays: $("#sd_delay").value.trim(), incidents: $("#sd_inc").value.trim(), visitors: $("#sd_vis").value.trim(),
+    photos: old ? old.photos : [], gps, status: "recorded", exported: null, saved: new Date().toISOString()};
+  if (!rec.by) { msg("#sd_msg", "bad", "Enter your name in Setup."); return; }
+  if (!rec.weather.am && !rec.weather.pm) { msg("#sd_msg", "bad", "Record the weather."); return; }
+  if (work.some((w) => w.from != null && w.to != null && !(w.to > w.from))) { msg("#sd_msg", "bad", "In work done, To must be greater than From."); return; }
+  for (const [k, p] of SPEND.d.entries()) { const key = `${rec.id}-${rec.photos.length + k}`; await DB.putPhoto(key, p); rec.photos.push(key); }
+  await DB.put(rec); RECS = RECS.filter((r) => r.id !== rec.id); RECS.push(rec);
+  SPEND.d = []; $("#sd_thumbs").innerHTML = "";
+  msg("#sd_msg", "ok", `Diary saved for ${d}: ${Object.values(labour).reduce((a, b) => a + b, 0)} people on site, ${work.length} work item(s).`);
+};
+
+document.querySelectorAll("#n_mode button").forEach((b) => (b.onclick = () => { NMODE = b.dataset.v; document.querySelectorAll("#n_mode button").forEach((x) => x.classList.toggle("on", x === b)); drawInsp(); }));
+document.querySelectorAll("#n_res button").forEach((b) => (b.onclick = () => { NRES = b.dataset.v; document.querySelectorAll("#n_res button").forEach((x) => x.classList.toggle("on", x === b)); }));
+function drawInsp() {
+  $("#n_none").style.display = PK ? "none" : ""; $("#n_form").style.display = PK ? "" : "none";
+  if (!PK) return;
+  const S = SUP() || {holds: [], culverts: []};
+  if (!$("#n_date").value) $("#n_date").value = today();
+  $("#n_road_w").style.display = NMODE === "road" ? "" : "none"; $("#n_culv_w").style.display = NMODE === "culv" ? "" : "none";
+  const road = $("#n_road").value;
+  $("#n_road").innerHTML = PK.roads.map((r) => `<option ${r.name === road ? "selected" : ""}>${esc(r.name)}</option>`).join("");
+  const h = $("#n_hold").value, groups = [...new Set(S.holds.map((x) => x.group))];
+  $("#n_hold").innerHTML = groups.map((g) => `<optgroup label="${esc(g)}">${S.holds.filter((x) => x.group === g).map((x) => `<option value="${x.key}" ${x.key === h ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</optgroup>`).join("");
+  const cv = S.culverts.filter((c) => !road || c.road === road || NMODE === "culv"), pt = $("#n_pt").value;
+  $("#n_pt").innerHTML = cv.map((c) => `<option value="${esc(c.id)}" ${c.id === pt ? "selected" : ""}>${esc(c.label)}</option>`).join("");
+  const c = S.culverts.find((x) => x.id === $("#n_pt").value);
+  $("#n_stage").innerHTML = c ? c.stages.map((x) => `<option value="${x.key}">${esc(x.label)}</option>`).join("") : "";
+  if (NMODE === "culv" && !cv.length) msg("#n_msg", "warn", "No culvert in this site pack is inspected at a hold point.");
+  if (!S.holds.length && NMODE === "road") msg("#n_msg", "warn", "Download the site pack again from the office: this one has no hold points.");
+}
+$("#n_pt").onchange = drawInsp; $("#n_road").onchange = drawInsp;
+$("#n_gps").onclick = () => stampTo("#n_gpsv");
+$("#n_save").onclick = async () => {
+  const base = {id: "insp-" + newId(), kind: "inspection", date: $("#n_date").value, by: who(), role: "Site Supervisor",
+    result: NRES, note: $("#n_note").value.trim(), gps, photos: [], status: "recorded", exported: null, saved: new Date().toISOString()};
+  let rec, what;
+  if (NMODE === "road") {
+    if ($("#n_from").value === "" || $("#n_to").value === "") { msg("#n_msg", "bad", "Enter From and To."); return; }
+    rec = {...base, road: $("#n_road").value, hold: $("#n_hold").value, from: +$("#n_from").value, to: +$("#n_to").value};
+    if (!(rec.to > rec.from)) { msg("#n_msg", "bad", "To must be greater than From."); return; }
+    what = `${$("#n_hold").selectedOptions[0].textContent}, ${ch(rec.from)} to ${ch(rec.to)}`;
+  } else {
+    const c = (SUP().culverts || []).find((x) => x.id === $("#n_pt").value);
+    if (!c) { msg("#n_msg", "bad", "Choose the culvert."); return; }
+    rec = {...base, road: c.road, point: c.id, stage: $("#n_stage").value};
+    what = `${c.label}: ${$("#n_stage").selectedOptions[0].textContent}`;
+  }
+  if (!rec.by) { msg("#n_msg", "bad", "Enter your name in Setup."); return; }
+  if (!rec.hold && !rec.point) { msg("#n_msg", "bad", "Choose the hold point."); return; }
+  if (rec.result === "fail" && !rec.note) { msg("#n_msg", "bad", "Describe what failed in the note."); return; }
+  for (const [k, p] of SPEND.n.entries()) { const key = `${rec.id}-${k}`; await DB.putPhoto(key, p); rec.photos.push(key); }
+  await DB.put(rec); RECS.push(rec); SPEND.n = []; $("#n_thumbs").innerHTML = ""; $("#n_note").value = ""; gps = null; $("#n_gpsv").textContent = "";
+  if (NMODE === "road") { $("#n_from").value = rec.to; $("#n_to").value = ""; }
+  msg("#n_msg", rec.result === "fail" ? "warn" : "ok", `Saved: ${esc(what)} — <b>${rec.result}</b>.`);
+};
+function supCard(r) {
+  const del = r.exported ? "" : `<button class="btn sec" style="margin-top:6px;padding:5px 10px" data-del="${r.id}">Delete</button>`;
+  const head = `<span class="pill">${r.exported ? "sent " + r.exported : "not sent"}</span>`;
+  if (r.kind === "diary") return `<div class="card"><b>Site diary ${r.date}</b> ${head}<div>${esc(r.weather.am || "")}/${esc(r.weather.pm || "")}${r.weather.rain_mm ? ", " + r.weather.rain_mm + " mm" : ""} · ${Object.values(r.labour || {}).reduce((a, b) => a + b, 0)} people · ${(r.work || []).length} work item(s)</div>
+    <div class="muted">${esc(r.by)}${r.photos.length ? " · " + r.photos.length + " photo(s)" : ""}</div>${del}</div>`;
+  const S = SUP() || {holds: [], culverts: []};
+  const what = r.point ? `${esc((S.culverts.find((c) => c.id === r.point) || {}).label || r.point)}: ${esc(r.stage)}` : `${esc((S.holds.find((h) => h.key === r.hold) || {}).label || r.hold)}, ${ch(r.from)} to ${ch(r.to)}`;
+  return `<div class="card"><b>Inspection</b> ${head}<div>${what} — <b style="color:${r.result === "pass" ? "var(--ok)" : "var(--bad)"}">${r.result}</b></div>
+    <div class="muted">${r.date} · ${esc(r.by)}${r.note ? " · " + esc(r.note) : ""}${r.photos.length ? " · " + r.photos.length + " photo(s)" : ""}</div>${del}</div>`;
+}
+
 (async () => {
   PK = await DB.get("pack") || null; DIMS = await DB.get("dims") || {}; RECS = await DB.recs() || [];
-  drawForm();
+  drawForm(); applyRole();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>

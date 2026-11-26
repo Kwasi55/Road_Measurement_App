@@ -9,6 +9,8 @@ It works in one of two ways, decided by the site pack:
 - **Bills from the Road BOQ Estimator (version 2 site pack).** You record the **work done**: which activity, from where to where, and which culverts are finished. You type no dimensions. In the office, the Estimator's own two engines work out every item from your records, using the design: materials, concrete, formwork, reinforcement, pipes, binder, chippings and haulage. See sections 3 and 4.
 - **Bills from any other source (version 3 site pack, from 19 Nov 2026).** Two tabs. **BOQ items**: you measure each item by its dimensions (sections 3b and 4b). **Culverts**: you record each culvert or minor structure by its **number** on the road (Culvert No. 1, No. 2 …) as completed, with its as-built length, or in progress. Culvert items (pipes, concrete, formwork, excavation) are paid in the office pro rata to each culvert's design length; haulage is paid in the office from the items it serves, so neither is measured on the phone.
 
+**The Site Supervisor** (from 25 Nov 2026) uses the same app: in **Setup → Who uses this phone**, choose *Site Supervisor* and type your name. The app then shows **Diary** and **Inspect** in place of Measure and Items (section 9).
+
 ---
 
 ## 1. Install it on the phone (once)
@@ -132,6 +134,25 @@ Work that fails its test counts as progress but is not paid until it is re-teste
 - **Back up** with *Export all records* at least weekly.
 - **One project at a time** on a phone.
 - **Updates:** when a new version is published, open the app once with signal; it updates itself.
+
+## 9. The Site Supervisor: site diary and inspections
+
+**Setup.** Load the site pack, then under *Who uses this phone* choose **Site Supervisor** and type your name. Download the site pack again if the Inspect tab says it has no hold points.
+
+**Diary** (one page a day):
+- **Weather**: morning and afternoon, rain in mm, hours lost. *Fetch the weather* fills it in when the phone has signal and GPS.
+- **Labour** by trade, **plant** (working, idle or broken down) and **materials delivered**.
+- **Work done**: *Add work done*, choose the programme activity and give the chainages worked.
+- **Instructions, delays, incidents, visitors** and **photos**.
+Saving the same day again replaces it until it has been sent.
+
+**Inspect** (hold points; the Laboratory still does the tests):
+- **Road and drains**: choose the hold point (formation, sub-base, base, prime, seals, drains), the road and the chainages inspected.
+- **Culverts**: choose the culvert and the stage (bedding before laying; steel and formwork before the pour; joints before backfill).
+- **Pass** or **Fail**. A fail needs a note saying what failed; inspect again after the correction.
+Work at a hold point is paid only after a passed inspection that the Engineer's Deputy has accepted in the office.
+
+**Export** sends the diary days and inspections in the same kind of file. The office imports it on the **Site diary** tab.
 
 ## Troubleshooting
 
